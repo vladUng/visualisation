@@ -3,4 +3,8 @@ google-api-python-client
 google-auth-httplib2 
 google-auth-oauthlib
 google-cloud-storage
+google-cloud-datastore==1.15.0
+google-auth==1.21.1
+requests==2.24.0
+grpcio
 pandas
