@@ -45,29 +45,7 @@ def init_dashboard(server):
     dash_app.index_string = html_layout
 
     # Create Layout
-    dash_app.layout = html.Div(
-        children=[
-            # dcc.Graph(
-            # id='test-graph',
-            # figure={
-            #     'data': [{
-            #         'x': df['complaint_type'],
-            #         'text': df['complaint_type'],
-            #         'customdata': df['key'],
-            #         'name': '311 Calls by region.',
-            #         'type': 'histogram'
-            #     }],
-            #     'layout': {
-            #         'title': 'NYC 311 Calls category.',
-            #         'height': 500,
-            #         'padding': 150
-            #     }
-            # }),
-            # create_data_table(df),
-            create_test_plot()
-        ],
-        id='dash-container'
-    )
+    dash_app.layout = create_test_plot()
     return dash_app.server
 
 def create_data_table(df):
@@ -83,15 +61,27 @@ def create_data_table(df):
     return table
 
 def create_test_plot():
-    df = pd.DataFrame({
-    "Fruit": ["Apples", "Oranges", "Bananas", "Apples", "Oranges", "Bananas"],
-    "Amount": [4, 1, 2, 2, 4, 5],
-    "City": ["SF", "SF", "SF", "Montreal", "Montreal", "Montreal"]
-    })
 
-    fig = px.bar(df, x="Fruit", y="Amount", color="City", barmode="group")
-    return dcc.Graph(
-        id='example-graph',
-        figure=fig
+    import plotlyflask.viz_tools.main_viz as viz
+
+    fig1, fig2 = viz.test_bu_plots()
+
+    return html.Div( children=[
+           dcc.Graph(id="example-graph", figure=fig1),
+           dcc.Graph(id="example-graph-2", figure=fig2)
+        ],
+        id='dash-container'
     )
+
+    # df = pd.DataFrame({
+    # "Fruit": ["Apples", "Oranges", "Bananas", "Apples", "Oranges", "Bananas"],
+    # "Amount": [4, 1, 2, 2, 4, 5],
+    # "City": ["SF", "SF", "SF", "Montreal", "Montreal", "Montreal"]
+    # })
+
+    # fig = px.bar(df, x="Fruit", y="Amount", color="City", barmode="group")
+    # return dcc.Graph(
+    #     id='example-graph',
+    #     figure=fig
+    # )
 

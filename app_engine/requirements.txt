@@ -11,3 +11,8 @@ python-dotenv
 gunicorn
 grpcio
 pandas
+
+yellowbrick
+sklearn
+matplotlib
+scipy
