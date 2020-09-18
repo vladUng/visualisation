@@ -132,3 +132,6 @@ dmypy.json
 keys/
 saved_data/
 token.pickle
+
+.env
+*.DS_Store

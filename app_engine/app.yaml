@@ -1,6 +1,7 @@
 runtime: python38
 
 
+entrypoint: gunicorn -b :$PORT wsgi:app
 
 handlers:
   # This configures Google App Engine to serve the files in the app's static
@@ -13,4 +14,6 @@ handlers:
   # the entire handlers section) when there are no static files defined.
 - url: /.*
   script: auto
+
+
 

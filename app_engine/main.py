@@ -215,7 +215,7 @@ def root():
     return flask.redirect(flask.url_for("oauth2"))
 
 
-  return flask.render_template('index.html', times=[1,2,3])
+  return flask.render_template('templates/index.html', times=[1,2,3])
 
 
   # Google sign in implementation
@@ -343,7 +343,7 @@ def test_api_request():
   #              credentials in a persistent database instead.
   flask.session['credentials'] = credentials_to_dict(credentials)
 
-  return flask.render_template('index.html', times=files_added)
+  return flask.render_template('templates/index.html', times=files_added)
 
 
 def credentials_to_dict(credentials):
