@@ -4,26 +4,12 @@ import dash
 import dash_table
 import dash_html_components as html
 import dash_core_components as dcc
+
 from plotlyflask.plotlydash.data import create_dataframe
 from plotlyflask.plotlydash.layout import html_layout
+import plotlyflask.viz_tools.main_viz as viz
 
 import plotly.express as px
-
-# filepaths and filenames
-base_path = "/Users/vlad/Documents/Code/York/BU_clustering/src/data/"
-
-bu_raw = "BU_TPMs.tsv"
-# processed
-bu_seq = 'BU_TPMs_sequencer-BC.tsv'
-#metadata
-bu_metadata = "200319_sequenced_sample_metadata.tsv"
-# what is machine is used for sequencing are used
-bu_machine = "BU_sequencer_batch.tsv"
-
-# Differentiate tissue type after batch
-all_diff_bc_raw = "all_diff_bc.tsv"
-some_diff_bc_raw = "some_diff_bc.tsv"
-po_bc_raw = "p0_bc_2.tsv"
 
 
 def init_dashboard(server):
@@ -62,10 +48,7 @@ def create_data_table(df):
 
 def create_test_plot():
 
-    import plotlyflask.viz_tools.main_viz as viz
-
     fig1, fig2 = viz.test_bu_plots()
-
     return html.Div( children=[
            dcc.Graph(id="example-graph", figure=fig1),
            dcc.Graph(id="example-graph-2", figure=fig2)
@@ -80,8 +63,20 @@ def create_test_plot():
     # })
 
     # fig = px.bar(df, x="Fruit", y="Amount", color="City", barmode="group")
-    # return dcc.Graph(
-    #     id='example-graph',
-    #     figure=fig
-    # )
+
+    # return html.Div(children=[
+    #     html.H1(children='Hello Dash'),
+    #     html.Div(children='''
+    #         Dash: A web application framework for Python.
+    #     '''),
+    #     dcc.Graph(
+    #         id='example-graph',
+    #         figure=fig
+    #     )
+    # ])
+
+
+
+
+
 

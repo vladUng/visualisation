@@ -195,8 +195,6 @@ def process_files(file_paths):
 
 @app.route('/')
 def root():
-
-
   # pickle_path = '/tmp/token.pickle' #for app engine
   pickle_path = 'token.pickle'
   if os.path.exists(pickle_path):
