@@ -49,23 +49,19 @@ def import_files(base_path):
     return ret_dict, combined_genes
     
 def create_swarm_figs(metadata, found_in, datasets_selected):
-    # all_tsv = data_dict["all_tsv"]["df"]
-    # metadata = data_dict["00_JBU_sequencing_metadata.tsv"]["df"]
+    # create the figure layout
     layout = go.Layout (
         title = "Swarm plot for {}".format(found_in["genes"].values[0]),
         height= 600
-        # width = 700,
     )
-
+    # prepare datafrarme
     found_in = found_in.drop(["genes"], axis=1).T.reset_index()
     found_in.columns = ["Sample", "TPM"]
-
+    # process metadata and add to the df
     metadata_selected = metadata[metadata["Sample"].isin(found_in["Sample"])]
     procesed_df = pd.concat([found_in, metadata_selected], axis=1)
-
-    # drop_datasets = list(set(datasets_selected) & set(procesed_df["Dataset"].values))
-
     procesed_df = procesed_df[procesed_df["Dataset"].isin(datasets_selected)]
+    # create figure
     fig = px.strip(procesed_df, x='Dataset', y='TPM', color="Dataset", 
             hover_data = ["Tissue", "NHU_differentiation", "Gender", "TER", "Substrate"])
     fig.update_layout(layout)
@@ -81,51 +77,32 @@ def create_dfs_tick_box(data_dict):
             "label": dataset,
             "value": dataset,
         })
-    print(datasets)
     return html.Div([
         html.H6("Change the value in the text box to see callbacks in action!"),
         dcc.Checklist(
             id = "data-checklist",
             options = options,
             value = datasets,
-            style = {
-               "column-count": "2"
-            },
-        ),
+            style = { "column-count": "2", "width": "50%"}),
         html.Br(),
-        html.Div(id="data-selected")
     ])
 
 def create_gene_search(data_dict):
     # column names should be the same as the ones from the dataframe containing the gen
-    return html.Div([
+    return html.Div(id="gene-controls", children = [
                 html.H6("Find a gene in the dataset"),
-                html.Div(["Gene name: ",
-                        dcc.Input(id='gene-input', value="", type='text'),
-                        html.Button(id='search-button-gene', n_clicks=0, children='Submit')],
-                        style = {"column-count": "2"}
-                        ),
+                html.Div([
+                    "Gene name: ",
+                    dcc.Input(id='gene-input', value="", type='text')]),
                 html.Br(),
                 create_dfs_tick_box(data_dict),
                 html.Br(),
-                html.Div(id='search-result'),
-                html.Br(),
-                dcc.Graph(
-                    id='dataset-plots',
-                    figure = { "data" : {},
-                    "layout": {
-                        "title": "My Dash Graph",
-                        "height": 400,  # px
-                    }})
+                html.Button(id='plot-gene', n_clicks=0, children='Plot'),
+                html.Div(id='search-result')
             ])
-            # dash_table.DataTable(
-            #     id='found-dataset',
-            #     columns=[{"name": i, "id": i} for i in df.columns],
-            #     data=df.to_dict('records'),
-            #     style_cell={'textAlign': 'center','min-width':'50px', 'width':'200px'})
 
 def metadata_menu(metadata_df):
-    return html.Div(children=[
+    return html.Div(id="metadata-menu", children=[
         html.H6("Select sample(s)"),
         html.Label('Select Sample'),
         dcc.Dropdown(
@@ -182,29 +159,17 @@ def metadata_menu(metadata_df):
     ])
         
 def init_callbacks(dash_app, data_dict, combined_genes):
-    @dash_app.callback(
-        Output(component_id='data-selected', component_property="children"),
-        [Input(component_id='data-checklist', component_property='value')])
-    def show_selected_data(input_value):
-        return 'Output: {}'.format(input_value)
-
     # @dash_app.callback(
-    #     Output(component_id='found-dataset', component_property="data"),
-    #     [Input(component_id='gene-input', component_property='value')])
-    def search_gene(user_input):
-        genes_found, datasets = "", ""
-        found_in_df = pd.DataFrame()
-        if (user_input.strip()): 
-            found_in_df = combined_genes[combined_genes["genes"].str.contains(user_input, case = False, na=False)]
-            genes_found = " ".join(found_in_df["genes"].astype(str))
-            datasets = " ".join(found_in_df["dataset"].astype(str))
-        # return 'Gene(s) found: {} in dataset(s): {}'.format(genes_found, datasets)
-        return found_in_df.to_dict('records')
-        
+    # Output('plot-gene', "children"),
+    # [])
+    # def show_selected_data(input_value):
+    #     return "Re-Plot"
+
     @dash_app.callback(
         [Output('search-result', "children"),
-        Output('dataset-plots', "figure")],
-        [Input('search-button-gene', 'n_clicks')],
+        Output('dataset-plots', "figure"),
+        Output('plot-gene', "children")],
+        [Input('plot-gene', 'n_clicks')],
         [State("gene-input", "value"),
         State("data-checklist", "value")])
     def show_gene_plots(n_clicks, user_input, datasets_selected):
@@ -223,10 +188,10 @@ def init_callbacks(dash_app, data_dict, combined_genes):
                 ret_str = 'Gene {} found in dataset(s): {}'.format(user_input, datasets)
 
                 fig = create_swarm_figs(data_dict["00_JBU_sequencing_metadata.tsv"]["df"], found_in, datasets_selected)
-                return ret_str, fig
+                return ret_str, fig, "Plot"
             else:
                 return "Gene {} not found in any of the datasets".format(user_input), {}
-        return "Search for gene and click submit", {} 
+        return "Search for gene and click submit", {}, "Plot" 
 
 def init_dashboard(server):
     """Create a Plotly Dash dashboard."""
@@ -241,14 +206,19 @@ def init_dashboard(server):
 
     # Create Layout
     dash_app.layout = html.Div(children=[
-        html.H1(children='Hello Dash'),
-        html.Div(children='''
-            Dash: A web application framework for Python.
-        '''),
-        html.Div(children=[
-        create_gene_search(data_dict), 
+        html.H1(children='JBU visualisation tool'),
+        html.Div(id="parrent-all", children=[
+            html.Div(id="parent-controllers", style = { "column-count": "2", "width":"fit-content"}, 
+            children=[
+                create_gene_search(data_dict), 
+                metadata_menu(data_dict["00_JBU_sequencing_metadata.tsv"]["df"]),
+            ]),
+            dcc.Graph(
+                id='dataset-plots',
+                figure = { "data" : {},
+                "layout": { "title": "No Gene Search", "height": 300 }
+                })
         ]),
-        metadata_menu(data_dict["00_JBU_sequencing_metadata.tsv"]["df"]),
     ])
     return dash_app.server
 
