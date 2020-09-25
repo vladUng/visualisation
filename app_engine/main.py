@@ -19,8 +19,6 @@ from google.auth.transport import requests
 import datetime
 
 
-
-
 app = flask.Flask(__name__)
 datastore_client = datastore.Client()
 firebase_request_adapter = requests.Request()

@@ -1,18 +1,19 @@
 Flask==1.1.2
-google-api-python-client
-google-auth-httplib2 
-google-auth-oauthlib
-google-cloud-storage
-google-cloud-datastore==1.15.0
-google-auth==1.21.1
-requests==2.24.0
+# google-api-python-client
+# google-auth-httplib2 
+# google-auth-oauthlib
+# google-cloud-storage
+# google-cloud-datastore==1.15.0
+# google-auth==1.21.1
+# requests==2.24.0
 dash==1.16.1
 python-dotenv
-gunicorn
-grpcio
+# gunicorn
+# grpcio
 pandas
+plotly
 
-yellowbrick
-sklearn
-matplotlib
-scipy
+# yellowbrick
+# sklearn
+# matplotlib
+# scipy
