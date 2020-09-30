@@ -1,19 +1,15 @@
 import numpy as np
 import pandas as pd
 import dash
-import dash_table
 import dash_html_components as html
 import dash_core_components as dcc
 from dash.dependencies import Input, Output, State
-
 import plotly.express as px
 import plotly.graph_objects as go
 
 from os import path
-
 import time 
 from datetime import datetime
-import re
 
 def sync_df(df_metadata, df):
     # syncrhonise dfs
@@ -279,14 +275,14 @@ def export_panel():
 def init_callbacks(dash_app, data_dict):
     # latest fig to save
     @dash_app.callback(
-         [Output('search-result', "children"), Output('dataset-plots', "figure")],
+         [Output('search-result', "children"), Output('dataset-plots', "figure"), Output('intermediate-value', 'children')],
          [Input('plot-gene', 'n_clicks'), Input('metadata-plot', 'n_clicks'),
           Input("gene-input","n_submit")],
          [State("gene-input", "value"),  State("data-checklist", "value"), State("ter-checklist","value"), State("xaxis-dropdown", "value")]
     )
     def button_router(btn_1, btn_2, n_submit, user_input, datasets_selected, ter, xaxis):
         ctx = dash.callback_context
-
+        ret_data = pd.DataFrame().to_json(date_format='iso', orient='split') 
         # get the button_id
         if not ctx.triggered:
             button_id = 'No clicks yet'
@@ -298,16 +294,17 @@ def init_callbacks(dash_app, data_dict):
             all_tsv = data_dict["all_tsv"]
             metadata = data_dict["metadata"]
             found_in = all_tsv[all_tsv["genes"].str.fullmatch("\\b"+prcsd_str+"\\b", case = False, na=False)]
+            ret_data = found_in.to_json(date_format='iso', orient='split')
 
             if button_id == "plot-gene" or button_id == "gene-input":
                 print("Dataset plot has been trieggered")  
                 ret_string, last_fig = create_datasets_plot(found_in, metadata, prcsd_str, datasets_selected)
-                return ret_string, last_fig
+                return ret_string, last_fig, ret_data
             else:
                 print("Metadata plot has been triggered")
                 ret_string, last_fig = create_medata_plot(found_in, metadata, prcsd_str, datasets_selected, ter, xaxis)
-                return ret_string, last_fig
-        return "Search for gene and click submit", { "data" : {} }
+                return ret_string, last_fig, ret_data
+        return "Search for gene and click submit", { "data" : {} }, ret_data
 
     @dash_app.callback(
         Output("data-checklist", "value"),
@@ -333,17 +330,33 @@ def init_callbacks(dash_app, data_dict):
 
     @dash_app.callback(
         Output("output-export-csv", 'children'),
-        [Input("export-plot", "n_clicks")],
+        [Input("export-plot", "n_clicks"), Input("export-data", "n_clicks"), Input('intermediate-value', 'children')],
         [State("plot-width", "value"), State("plot-height", "value"), State("plot-scale", "value"), State("dataset-plots", "figure")]
     )
-    def export_plot(btn_1, width, height, scale, figure):
+    def export_plot(btn_1, btn_2, data_json, width, height, scale, figure):
         path =  "./exported_data/"
         ret_string = "There is no figure to save"
-        if figure["data"]:
-            fig = go.Figure(figure)
-            name = "{}jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H:%M:%S'), ".pdf")
-            fig.write_image(name, width=width, height=height, scale=scale) 
-            ret_string = "Plot saved to {}".format(name)
+
+        ctx = dash.callback_context
+        # get the button_id
+        if not ctx.triggered:
+            button_id = 'No clicks yet'
+        else:
+            button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+        if button_id == "export-plot":
+            if figure["data"]:
+                fig = go.Figure(figure)
+                filepath = "{}plot-jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H:%M:%S'), ".pdf")
+                fig.write_image(filepath, width=width, height=height, scale=scale) 
+                ret_string = "Plot saved to {}".format(filepath)
+        elif button_id == "export-data":
+            figure_data_df = pd.read_json(data_json, orient='split')
+            filepath = "{}data-jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H:%M:%S'), ".csv")
+            # we need to remove the duplicated samples
+            unique_samples = [col for col in figure_data_df.columns.astype(str) if "_incl_" not in col]
+            figure_data_df[unique_samples].to_csv(filepath)
+            ret_string = "Data saved to {}".format(filepath)
         return ret_string
         
 def init_dashboard(server):
@@ -379,7 +392,8 @@ def init_dashboard(server):
                 figure = { "data" : {},
                 "layout": { "title": "No Gene Search", "height": 300 }
                 }),
-            export_panel()
+            export_panel(),
+            html.Div(id='intermediate-value', style={'display': 'none'}) #used to store data between callbacks
         ]),
     ])
     return dash_app.server
