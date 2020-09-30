@@ -323,7 +323,6 @@ def init_callbacks(dash_app, data_dict):
                 if incl_col in datasets:
                     datasets.remove(incl_col)
             return datasets
-            # return [datasets_selected for datasets_selected in list(data_dict["metadata"]["Dataset"].unique()) if datasets_selected not in incl_cols]
         elif radio_value == "incl":
             incl_cols = [col for col in data_dict["metadata"].columns if "incl_" in col]
             # include only the incl_cols that were not selected
