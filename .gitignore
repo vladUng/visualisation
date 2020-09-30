@@ -133,6 +133,7 @@ keys/
 saved_data/
 data/
 exported_data/
+g_drive/
 
 token.pickle
 .env
