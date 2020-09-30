@@ -131,7 +131,9 @@ dmypy.json
 # Project specific folders
 keys/
 saved_data/
-token.pickle
+data/
+exported_data/
 
+token.pickle
 .env
 *.DS_Store
