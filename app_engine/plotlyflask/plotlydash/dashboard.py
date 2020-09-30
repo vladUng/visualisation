@@ -19,6 +19,7 @@ def sync_df(df_metadata, df):
     # syncrhonise dfs
     #the df with common samples from both df metadata and the df with tpms
     df_common = filter_data(df, "Sample", list(df_metadata["Sample"].values))
+    
     #for cases when some samples are in a database but not others
     metadata_common = filter_data(df_metadata, "Sample", list(df["Sample"].values)) 
 
@@ -28,14 +29,43 @@ def sync_df(df_metadata, df):
     metadata_sorted["TPM"] = df_common["TPM"].values
     return metadata_sorted
 
-def process_metadata(df_metadata):
+def process_metadata(df_metadata, all_tsv):
 
     df_metadata = df_metadata.replace("?", np.nan)
     cols = ["NHU_differentiation", "Tissue", "Gender", "Diagnosis", "Substrate"] #cols to replace nan with NA string
     for col in cols:
         df_metadata[col] = df_metadata[col].fillna("Not-known")
 
-    return df_metadata
+    #add the incl columns to the datasets and duplicate the samples
+    incl_cols = [col for col in df_metadata.columns if "incl_" in col]
+    new_rows_metadata = pd.DataFrame()
+    new_cols_all_tsv = pd.DataFrame()
+    for incl_col in incl_cols:
+        # select samples
+        metadata_selected = filter_data(df_metadata, incl_col, ["Y"])
+        selected_samples = metadata_selected["Sample"].values
+        # get initials of the cols
+        initials = "_incl_"
+        for initial in incl_col.split("_"):
+            initials += initial[0]
+        # update the metadata
+        duplicated_samples = [sample+initials for sample in selected_samples]
+        metadata_selected = metadata_selected.drop("Sample", axis=1)
+        metadata_selected["Sample"] = duplicated_samples
+        metadata_selected["Dataset"] = incl_col
+        new_rows_metadata = new_rows_metadata.append(metadata_selected, ignore_index=True)
+
+        # update all_tsv
+        selected_samples
+        all_tsv_selected = all_tsv[selected_samples]
+        # all_tsv_selected = all_tsv_selected.drop(["genes"], axis=1)
+        all_tsv_selected.columns = duplicated_samples
+        new_cols_all_tsv = pd.concat([new_cols_all_tsv, all_tsv_selected], axis=1)
+        
+    df_metadata = pd.merge(df_metadata, new_rows_metadata, how="outer")
+    # all_tsv = pd.merge(all_tsv, new_rows_all_tsv, how="outer")
+    all_tsv = pd.concat([all_tsv, new_cols_all_tsv], axis=1)
+    return df_metadata, all_tsv
 
 def import_data(base_path):
     """Creates the dataframe used for the tool and the metadata
@@ -51,7 +81,8 @@ def import_data(base_path):
         ret_dict = {}
         ret_dict["all_tsv"] = pd.read_csv(base_path + "all_data.tsv", delimiter="\t")
         raw_df = pd.read_csv(base_path + "00_JBU_sequencing_metadata.tsv", delimiter="\t")
-        ret_dict["metadata"] = process_metadata(raw_df)
+        # we need to do some pre-processing to duplicate the data _incl for fields
+        ret_dict["metadata"], ret_dict["all_tsv"] = process_metadata(raw_df, ret_dict["all_tsv"])
         print("Finished loading the data in {}".format(time.time()-start_time))
         return ret_dict
     else:
@@ -74,8 +105,8 @@ def update_all_datasets(base_path):
     # iterate through the csv file and create a list of dictionaries with the following: <key> - name of the file, <value> object which contains a dataframe and description from the .csv file.
     all_tsv, metadata = pd.DataFrame(), pd.DataFrame()
     ret_dict = {}
-    for index, row in master_cv.iterrows():
-        filename, description = row["Filename"], row["Description"]
+    for _, row in master_cv.iterrows():
+        filename, _ = row["Filename"], row["Description"]
         df = pd.read_csv(base_path+filename, delimiter="\t")
         print("Dataset: {} Shape {}".format(filename, df.shape))
     
@@ -88,7 +119,6 @@ def update_all_datasets(base_path):
             metadata = df 
 
     print("Finished loading the data in {}".format(time.time()-start_time))
-    ret_dict["metadata"] = process_metadata(metadata)
     ret_dict["all_tsv"] = all_tsv
 
     start_time = time.time()
@@ -112,38 +142,24 @@ def create_datasets_plot(found_in, metadata, user_input, datasets_selected):
         metadata_selected = filter_data(metadata, "Dataset", datasets_selected)
         processed_df = sync_df(metadata_selected, found_in)
 
-        if not datasets_selected:
-            return "No datapoints to plot", { "data" : {}}  
-        elif len(datasets_selected) == 1:
-            # create figure
-            tissue_types = []
-            for sample in processed_df["Sample"]:
-                # tissue_types.append(sample.split("-")[1].strip())
-                tissue_type = re.split("\W+", sample)
-                print(tissue_type)
-                if len(tissue_type) > 1:
-                    tissue_types.append(tissue_type[-1])
-                else:
-                    tissue_types.append(tissue_type[0])
+        hover_data = ["Sample",  "shared_num_same_col", "Tissue", "Dataset","NHU_differentiation", "Gender", "TER", "Substrate"]
+        x = "Dataset"
+        if not processed_df.empty:
+            if not datasets_selected:
+                return "No datapoints to plot", { "data" : {}}  
+            elif len(datasets_selected) == 1:
+                x = "shared_num_same_col"
 
-            processed_df["tissue_type"] = tissue_types
             # NOTE: ANDREW  modify this for new label shared_num_same_col
-            fig = px.strip(processed_df, x='shared_num_same_col', y='TPM', color="Dataset", 
-                    hover_data = ["Tissue", "NHU_differentiation", "Gender", "TER", "Substrate", "Sample", "shared_num_same_col"])
+            fig = px.strip(processed_df, x=x, y='TPM', color="Dataset", hover_data = hover_data)
             fig.update_layout(layout)
             return ret_str, fig
         else:
-            # create figure
-            fig = px.strip(processed_df, x='Dataset', y='TPM', color="Dataset", 
-                    hover_data = ["Tissue", "NHU_differentiation", "Gender", "TER", "Substrate"])
-            fig.update_layout(layout)
-            return ret_str, fig
-                
+            return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}} 
     else:
         return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}} 
 
-def create_medata_plot(found_in, metadata, user_input, datasets_selected,
-                            tissue, diagnosis, substrate, ter, gender, xaxis, incl_values):
+def create_medata_plot(found_in, metadata, user_input, datasets_selected, ter, xaxis):
     if not found_in.empty:
         ret_str = 'Gene {} was found'.format(user_input)
         # create the figure layout
@@ -155,19 +171,10 @@ def create_medata_plot(found_in, metadata, user_input, datasets_selected,
         found_in = found_in.drop(["genes"], axis=1).T.reset_index()
         found_in.columns = ["Sample", "TPM"]
         # process metadata and add to the df
-        metadata_selected = filter_data(metadata, "Dataset", datasets_selected)
-        metadata_selected = filter_data(metadata_selected, "Tissue", tissue)
-        metadata_selected = filter_data(metadata_selected, "Substrate", substrate)
-        metadata_selected = filter_data(metadata_selected, "Gender", gender)
+        metadata_selected = metadata.copy(deep=True)
 
         if ter != None and "tight" in ter:
             metadata_selected = metadata_selected[metadata_selected["TER"].astype(np.float16) >= 500]
-
-        # sort by the incl_cols. The below code will leave only the data that has Y values to the sel columns from incl values
-        sel_cols = [col for col in metadata_selected.columns if col in incl_values]
-        for sel_col in sel_cols:
-            if not metadata_selected.empty:
-                metadata_selected = filter_data(metadata_selected, sel_col, ["Y"])
 
         if metadata_selected.empty:
             return "No TPMs values for gene: {} found with this configurations".format(user_input),  {"data" : {}} 
@@ -175,9 +182,10 @@ def create_medata_plot(found_in, metadata, user_input, datasets_selected,
         # synchronize the metadata df with the tpm dataset if not empty
         metadata_selected = sync_df(metadata_selected, found_in)
     
-        # create figure
+        # create figure   
+        hover_data = ["Sample",  "shared_num_same_col", "Tissue", "Dataset","NHU_differentiation", "Gender", "TER", "Substrate"]
         fig = px.strip(metadata_selected, x=xaxis, y='TPM', color=xaxis, 
-                hover_data = ["Tissue", "NHU_differentiation", "Gender", "TER", "Substrate"])
+                hover_data = hover_data)
         fig.update_layout(layout)
         return ret_str, fig
     else:
@@ -209,27 +217,12 @@ def create_datasets_tick_box(data_dict):
             id = "select-all-none",
             options= [
                 {'label': 'All datasets', 'value': 'all'},
+                {'label': 'Include incl_ datasets', 'value': 'incl'},
+                {'label': 'Exclude incl_ datasets', 'value': 'excl'},
                 {'label': 'None datasets', 'value': 'none'},
             ]
         ),
     ])
-
-def create_incl_tissue(metadata):
-    incl_cols = [col for col in metadata.columns if "incl_" in col]
-    options = []
-    for incl_col in incl_cols:
-        options.append({
-            "label": incl_col,
-            "value": incl_col
-        })
-    return html.Div([
-        html.H5("Include the following"),
-        dcc.Checklist(
-            id = "incl-checklist",
-            options = options, value = [],
-            style = { "column-count": "2"}),
-        html.Br()
-        ])
 
 def create_gene_search(data_dict):
     # column names should be the same as the ones from the dataframe containing the gen
@@ -251,7 +244,6 @@ def metadata_menu(metadata_df):
     return html.Div(id="metadata-menu", style={"column-count":"1", "margin-top": "40%"},
      children=[
         html.H5("Metadata panel"),
-        create_incl_tissue(metadata_df),
         html.Label('Indicate tight barrier? (>500)'),
         dcc.Checklist(id="ter-checklist",
                 options=[
@@ -259,28 +251,8 @@ def metadata_menu(metadata_df):
         ]), html.Br(),
         html.Label('Select the X Axis'),
         dcc.Dropdown(
-            id="xaxis-dropdown", value="Tissue",
-            options=[{"label": i, "value": i} for i in ["NHU_differentiation", "Tissue", "Gender", "Diagnosis", "Substrate", "Dataset"]]
-        ), html.Br(),
-        html.Label('Tissue'),
-        dcc.Dropdown(
-            id="tissue-dropdown", value=[metadata_df["Tissue"].dropna().unique()[0]], multi=True,
-            options=[{"label": i, "value": i} for i in metadata_df["Tissue"].dropna().unique()]
-        ),html.Br(),
-        html.Label('Diagnosis'),
-        dcc.Dropdown(
-            id="diagnosis-dropdown", value=[metadata_df["Diagnosis"].dropna().unique()[0]], multi=True,
-            options=[{"label": i, "value": i} for i in metadata_df["Diagnosis"].dropna().unique()]
-        ), html.Br(),
-        html.Label('Substrate'),
-        dcc.Dropdown(
-            id="substrate-dropdown", value=[metadata_df["Substrate"].dropna().unique()[0]], multi=True,
-            options=[{"label": i, "value": i} for i in metadata_df["Substrate"].dropna().unique()]
-        ), html.Br(),
-        html.Label('Gender'),
-        dcc.Dropdown(
-            id="gender-radiobtn", value=metadata_df["Gender"].dropna().unique(), multi=True,
-            options= [{"label": i, "value": i} for i in metadata_df["Gender"].dropna().unique()]
+            id="xaxis-dropdown", value="shared_num_same_col",
+            options=[{"label": i, "value": i} for i in ["NHU_differentiation", "Tissue", "Gender", "Diagnosis", "Substrate", "Dataset", "shared_num_same_col"]]
         ), html.Br(),
         html.Label("After you selected the configuration from above press the below button to plot"), 
         html.Br(),
@@ -310,12 +282,9 @@ def init_callbacks(dash_app, data_dict):
          [Output('search-result', "children"), Output('dataset-plots', "figure")],
          [Input('plot-gene', 'n_clicks'), Input('metadata-plot', 'n_clicks'),
           Input("gene-input","n_submit")],
-         [State("gene-input", "value"),  State("data-checklist", "value"),
-         State("tissue-dropdown","value"), State("diagnosis-dropdown","value"),
-         State("substrate-dropdown","value"), State("ter-checklist","value"), State("gender-radiobtn","value"), State("xaxis-dropdown", "value"), State("incl-checklist", "value")]
+         [State("gene-input", "value"),  State("data-checklist", "value"), State("ter-checklist","value"), State("xaxis-dropdown", "value")]
     )
-    def button_router(btn_1, btn_2, n_submit, user_input, datasets_selected, 
-                        tissue, diagnosis, substrate, ter, gender, xaxis, incl_values):
+    def button_router(btn_1, btn_2, n_submit, user_input, datasets_selected, ter, xaxis):
         ctx = dash.callback_context
 
         # get the button_id
@@ -336,17 +305,30 @@ def init_callbacks(dash_app, data_dict):
                 return ret_string, last_fig
             else:
                 print("Metadata plot has been triggered")
-                ret_string, last_fig = create_medata_plot(found_in, metadata, prcsd_str, datasets_selected, tissue, diagnosis, substrate, ter, gender, xaxis, incl_values)
+                ret_string, last_fig = create_medata_plot(found_in, metadata, prcsd_str, datasets_selected, ter, xaxis)
                 return ret_string, last_fig
         return "Search for gene and click submit", { "data" : {} }
 
     @dash_app.callback(
         Output("data-checklist", "value"),
-        [Input("select-all-none", "value")]
+        [Input("select-all-none", "value")],
+        [State("data-checklist", "value")]
     )
-    def select_all_none_dasets(radio_value):    
+    def select_all_none_dasets(radio_value, datasets):    
         if radio_value == "none":
             return []
+        elif radio_value == "excl":     
+            incl_cols = [col for col in data_dict["metadata"].columns if "incl_" in col]   
+            for incl_col in incl_cols:
+                if incl_col in datasets:
+                    datasets.remove(incl_col)
+            return datasets
+            # return [datasets_selected for datasets_selected in list(data_dict["metadata"]["Dataset"].unique()) if datasets_selected not in incl_cols]
+        elif radio_value == "incl":
+            incl_cols = [col for col in data_dict["metadata"].columns if "incl_" in col]
+            # include only the incl_cols that were not selected
+            datasets+=list(set(incl_cols) - set(datasets))
+            return datasets
         else:
             return list(data_dict["metadata"]["Dataset"].unique())
 
