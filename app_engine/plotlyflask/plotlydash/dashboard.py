@@ -1,87 +1,38 @@
 import numpy as np
 import pandas as pd
 import dash
+import dash_table
 import dash_html_components as html
 import dash_core_components as dcc
 from dash.dependencies import Input, Output, State
+
 import plotly.express as px
 import plotly.graph_objects as go
 
 from os import path
+
 import time 
 from datetime import datetime
+import re
 
-##### Functions for .tsv handling #####
-def import_data(base_path):
-    """Creates the dataframe used for the tool and the metadata
-
-    Args:
-        base_path ([String]): Path to the data
-
-    Returns: 
-        DataDict: A dictionary which contains the the all_tsv and metadata 
-    """
-    start_time = time.time()
-    if path.exists(base_path):
-        ret_dict = {}
-        ret_dict["all_tsv"] = pd.read_csv(base_path + "all_data.tsv", delimiter="\t")
-        raw_df = pd.read_csv(base_path + "00_JBU_sequencing_metadata.tsv", delimiter="\t")
-        # we need to do some pre-processing to duplicate the data _incl for fields
-        ret_dict["metadata"], ret_dict["all_tsv"] = process_data(raw_df, ret_dict["all_tsv"])
-        print("Finished loading the data in {}".format(time.time()-start_time))
-        return ret_dict
-    else:
-        return None
-
-def update_all_datasets(base_path):
-    """ 
-    Function which takes the names of all the files from the master.tsv files and then updates the all tsv file
-
-    Args:
-        base_path ([String]): Path to /data folder 
-
-    Returns:
-        [type]: [description]
-    """
-    start_time = time.time()
-    # open the master .csv file, containing the contents of the folder
-    master_cv = pd.read_csv(base_path + "master.tsv", delimiter="\t")
-
-    # iterate through the csv file and create a list of dictionaries with the following: <key> - name of the file, <value> object which contains a dataframe and description from the .csv file.
-    all_tsv = pd.DataFrame()
-    ret_dict = {}
-    for _, row in master_cv.iterrows():
-        filename, _ = row["Filename"], row["Description"]
-        df = pd.read_csv(base_path+filename, delimiter="\t")
-        print("Dataset: {} Shape {}".format(filename, df.shape))
+def sync_df(df_metadata, df):
+    # syncrhonise dfs
+    #the df with common samples from both df metadata and the df with tpms
+    df_common = filter_data(df, "Sample", list(df_metadata["Sample"].values))
     
-        if "metadata" not in filename:
-            if not all_tsv.empty:
-                all_tsv = pd.merge(all_tsv, df, how="outer")
-            else:
-                all_tsv = df
+    #for cases when some samples are in a database but not others
+    metadata_common = filter_data(df_metadata, "Sample", list(df["Sample"].values)) 
 
-    print("Finished loading the data in {}".format(time.time()-start_time))
-    ret_dict["all_tsv"] = all_tsv
+    # sort both by samples so that there are syncd
+    metadata_sorted = metadata_common.sort_values("Sample")
+    df_common = df_common.sort_values("Sample")
+    metadata_sorted["TPM"] = df_common["TPM"].values
+    return metadata_sorted
 
-    start_time = time.time()
-    all_tsv.to_csv(base_path + "all_data.tsv",  sep='\t', index = False)
-    print("Update .tsv file with the new data in {}".format(time.time() - start_time))
-
-def process_data(df_metadata, all_tsv):
-    """ Process the metadata and the all_tsv file. The are two main operations happening:
-    1. Replaing in specified cols the nan values and "?" with Not-known
-    2. Fakes the _incl columns with values of "Y" to be as datasets. This involved to duplicate both the samples in metadata and in the `all_data.tsv`. We've marked the samples that are duplicated by the following rule "_incl_" + "including column initials". 
-    Args:
-        df_metadata ([DataFrame]): The medata
-        all_tsv ([DataFrame]): TPM dataframe
-    Returns:
-        (DataFrame, DataFrame): The two dataframes updated
-    """
+def process_metadata(df_metadata, all_tsv):
 
     df_metadata = df_metadata.replace("?", np.nan)
-    #cols to replace nan with NA string
-    cols = ["NHU_differentiation", "Tissue", "Gender", "Diagnosis", "Substrate"]
+    cols = ["NHU_differentiation", "Tissue", "Gender", "Diagnosis", "Substrate"] #cols to replace nan with NA string
     for col in cols:
         df_metadata[col] = df_metadata[col].fillna("Not-known")
 
@@ -116,35 +67,63 @@ def process_data(df_metadata, all_tsv):
     all_tsv = pd.concat([all_tsv, new_cols_all_tsv], axis=1)
     return df_metadata, all_tsv
 
-##### Utilities functions #####
-def filter_data(df, col, values_to_keep):
-    if values_to_keep:
-        df = df[df[col].isin(values_to_keep)]
-    return df
-
-def sync_df(df_metadata, df):
-    """ The role of this functions is to make sure that metadata df and all_data corresponds to the same samples after we've filter out some off the samples.
+def import_data(base_path):
+    """Creates the dataframe used for the tool and the metadata
 
     Args:
-        df_metadata ([DataFrame]): The medata
-        df ([DataFrame]): TPM dataframe
+        base_path ([String]): Path to the data
+
+    Returns: 
+        DataDict: A dictionary which contains the the all_tsv and metadata 
+    """
+    start_time = time.time()
+    if path.exists(base_path):
+        ret_dict = {}
+        ret_dict["all_tsv"] = pd.read_csv(base_path + "all_data.tsv", delimiter="\t")
+        raw_df = pd.read_csv(base_path + "00_JBU_sequencing_metadata.tsv", delimiter="\t")
+        # we need to do some pre-processing to duplicate the data _incl for fields
+        ret_dict["metadata"], ret_dict["all_tsv"] = process_metadata(raw_df, ret_dict["all_tsv"])
+        print("Finished loading the data in {}".format(time.time()-start_time))
+        return ret_dict
+    else:
+        return None
+
+def update_all_datasets(base_path):
+    """ 
+    Function which takes the names of all the files from the master.tsv files and then updates the all tsv file
+
+    Args:
+        base_path ([String]): Path to /data folder 
 
     Returns:
-        DataFrame: The metadata sorted
+        [type]: [description]
     """
-    #the df with common samples from both df metadata and the df with tpms
-    df_common = filter_data(df, "Sample", list(df_metadata["Sample"].values))
+    start_time = time.time()
+    # open the master .csv file, containing the contents of the folder
+    master_cv = pd.read_csv(base_path + "master.tsv", delimiter="\t")
+
+    # iterate through the csv file and create a list of dictionaries with the following: <key> - name of the file, <value> object which contains a dataframe and description from the .csv file.
+    all_tsv = pd.DataFrame(),
+    ret_dict = {}
+    for _, row in master_cv.iterrows():
+        filename, _ = row["Filename"], row["Description"]
+        df = pd.read_csv(base_path+filename, delimiter="\t")
+        print("Dataset: {} Shape {}".format(filename, df.shape))
     
-    #for cases when some samples are in a database but not others
-    metadata_common = filter_data(df_metadata, "Sample", list(df["Sample"].values)) 
+        if "metadata" not in filename:
+            if not all_tsv.empty:
+                all_tsv = pd.merge(all_tsv, df, how="outer")
+            else:
+                all_tsv = df
 
-    # sort both by samples so that there are syncd
-    metadata_sorted = metadata_common.sort_values("Sample")
-    df_common = df_common.sort_values("Sample")
-    metadata_sorted["TPM"] = df_common["TPM"].values
-    return metadata_sorted
+    print("Finished loading the data in {}".format(time.time()-start_time))
+    ret_dict["all_tsv"] = all_tsv
 
-##### Plotting functions #####
+    start_time = time.time()
+    all_tsv.to_csv(base_path + "all_data.tsv",  sep='\t', index = False)
+    print("Update .tsv file with the new data in {}".format(time.time() - start_time))
+    # return ret_dict
+    
 def create_datasets_plot(found_in, metadata, user_input, datasets_selected):
     if not found_in.empty:
         ret_str = 'Gene {} was found'.format(user_input)
@@ -210,9 +189,14 @@ def create_medata_plot(found_in, metadata, user_input, datasets_selected, ter, x
     else:
         return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}}  
 
-##### HTML functions #####
+def filter_data(df, col, values_to_keep):
+    if values_to_keep:
+        df = df[df[col].isin(values_to_keep)]
+    return df
+
 def create_datasets_tick_box(data_dict):
     # itereate through each of the dictionary and create the html code
+    # add calbacks 
     options = []
     datasets = data_dict["metadata"]["Dataset"].unique()
     for dataset in datasets:
@@ -293,14 +277,14 @@ def export_panel():
 def init_callbacks(dash_app, data_dict):
     # latest fig to save
     @dash_app.callback(
-         [Output('search-result', "children"), Output('dataset-plots', "figure"), Output('intermediate-value', 'children')],
+         [Output('search-result', "children"), Output('dataset-plots', "figure")],
          [Input('plot-gene', 'n_clicks'), Input('metadata-plot', 'n_clicks'),
           Input("gene-input","n_submit")],
          [State("gene-input", "value"),  State("data-checklist", "value"), State("ter-checklist","value"), State("xaxis-dropdown", "value")]
     )
     def button_router(btn_1, btn_2, n_submit, user_input, datasets_selected, ter, xaxis):
         ctx = dash.callback_context
-        ret_data = pd.DataFrame().to_json(date_format='iso', orient='split') 
+
         # get the button_id
         if not ctx.triggered:
             button_id = 'No clicks yet'
@@ -312,17 +296,16 @@ def init_callbacks(dash_app, data_dict):
             all_tsv = data_dict["all_tsv"]
             metadata = data_dict["metadata"]
             found_in = all_tsv[all_tsv["genes"].str.fullmatch("\\b"+prcsd_str+"\\b", case = False, na=False)]
-            ret_data = found_in.to_json(date_format='iso', orient='split')
 
             if button_id == "plot-gene" or button_id == "gene-input":
                 print("Dataset plot has been trieggered")  
                 ret_string, last_fig = create_datasets_plot(found_in, metadata, prcsd_str, datasets_selected)
-                return ret_string, last_fig, ret_data
+                return ret_string, last_fig
             else:
                 print("Metadata plot has been triggered")
                 ret_string, last_fig = create_medata_plot(found_in, metadata, prcsd_str, datasets_selected, ter, xaxis)
-                return ret_string, last_fig, ret_data
-        return "Search for gene and click submit", { "data" : {} }, ret_data
+                return ret_string, last_fig
+        return "Search for gene and click submit", { "data" : {} }
 
     @dash_app.callback(
         Output("data-checklist", "value"),
@@ -348,33 +331,17 @@ def init_callbacks(dash_app, data_dict):
 
     @dash_app.callback(
         Output("output-export-csv", 'children'),
-        [Input("export-plot", "n_clicks"), Input("export-data", "n_clicks"), Input('intermediate-value', 'children')],
+        [Input("export-plot", "n_clicks")],
         [State("plot-width", "value"), State("plot-height", "value"), State("plot-scale", "value"), State("dataset-plots", "figure")]
     )
-    def export_plot(btn_1, btn_2, data_json, width, height, scale, figure):
+    def export_plot(btn_1, width, height, scale, figure):
         path =  "./exported_data/"
         ret_string = "There is no figure to save"
-
-        ctx = dash.callback_context
-        # get the button_id
-        if not ctx.triggered:
-            button_id = 'No clicks yet'
-        else:
-            button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-
-        if button_id == "export-plot":
-            if figure["data"]:
-                fig = go.Figure(figure)
-                filepath = "{}plot-jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H:%M:%S'), ".pdf")
-                fig.write_image(filepath, width=width, height=height, scale=scale) 
-                ret_string = "Plot saved to {}".format(filepath)
-        elif button_id == "export-data":
-            figure_data_df = pd.read_json(data_json, orient='split')
-            filepath = "{}data-jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H:%M:%S'), ".csv")
-            # we need to remove the duplicated samples
-            unique_samples = [col for col in figure_data_df.columns.astype(str) if "_incl_" not in col]
-            figure_data_df[unique_samples].to_csv(filepath)
-            ret_string = "Data saved to {}".format(filepath)
+        if figure["data"]:
+            fig = go.Figure(figure)
+            name = "{}jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H:%M:%S'), ".pdf")
+            fig.write_image(name, width=width, height=height, scale=scale) 
+            ret_string = "Plot saved to {}".format(name)
         return ret_string
         
 def init_dashboard(server):
@@ -410,8 +377,7 @@ def init_dashboard(server):
                 figure = { "data" : {},
                 "layout": { "title": "No Gene Search", "height": 300 }
                 }),
-            export_panel(),
-            html.Div(id='intermediate-value', style={'display': 'none'}) #used to store data between callbacks
+            export_panel()
         ]),
     ])
     return dash_app.server

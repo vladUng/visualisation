@@ -22,6 +22,4 @@ class Config:
     # Static Assets
     STATIC_FOLDER = "plotlyflask/static"
     TEMPLATES_FOLDER = 'plotlyflask/templates'
-    # TEMPLATES_FOLDER = 'templates'
-    # STATIC_FOLDER = 'static'
     COMPRESSOR_DEBUG = environ.get('COMPRESSOR_DEBUG')
