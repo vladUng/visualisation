@@ -103,7 +103,7 @@ def update_all_datasets(base_path):
     master_cv = pd.read_csv(base_path + "master.tsv", delimiter="\t")
 
     # iterate through the csv file and create a list of dictionaries with the following: <key> - name of the file, <value> object which contains a dataframe and description from the .csv file.
-    all_tsv = pd.DataFrame(),
+    all_tsv = pd.DataFrame()
     ret_dict = {}
     for _, row in master_cv.iterrows():
         filename, _ = row["Filename"], row["Description"]

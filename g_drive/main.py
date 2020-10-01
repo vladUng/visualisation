@@ -243,7 +243,6 @@ def root():
         'index_2.html',
         user_data=claims, error_message=error_message, times=times)
 
-
 @app.route('/oauth2')
 def oauth2():
 
@@ -314,7 +313,6 @@ def oauth2callback():
 
   return flask.redirect(flask.url_for('test_api_request'))
 
-
 @app.route('/test_api_request')
 def test_api_request():
   print("\n\n#####Testing api call: ")
@@ -340,7 +338,6 @@ def test_api_request():
   flask.session['credentials'] = credentials_to_dict(credentials)
 
   return flask.render_template('templates/index.html', times=files_added)
-
 
 def credentials_to_dict(credentials):
   return {'token': credentials.token,

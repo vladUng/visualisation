@@ -108,8 +108,5 @@ def main():
     file_paths = get_files(drive_service, folder_id)
     process_files(file_paths)
 
-  # return the files paths
-
-
 if __name__ == '__main__':
     main()
