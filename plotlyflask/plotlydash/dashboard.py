@@ -203,7 +203,7 @@ def create_medata_plot(found_in, metadata, user_input, datasets_selected, ter, x
     
         # create figure   
         hover_data = ["Sample",  "shared_num_same_col", "Tissue", "Dataset","NHU_differentiation", "Gender", "TER", "Substrate"]
-        fig = px.strip(metadata_selected, x=xaxis, y='TPM', color=xaxis, 
+        fig = px.strip(metadata_selected, x=xaxis, y='TPM', color="Dataset", 
                 hover_data = hover_data)
         fig.update_layout(layout)
         return ret_str, fig
