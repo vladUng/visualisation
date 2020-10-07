@@ -145,34 +145,39 @@ def sync_df(df_metadata, df):
     return metadata_sorted
 
 ##### Plotting functions #####
-def create_datasets_plot(found_in, metadata, user_input, datasets_selected, plot_type, xaxis_type):
+def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter, plot_type, xaxis_type):
     if not found_in.empty:
         ret_str = 'Gene {} was found'.format(user_input)
 
         # create the figure layout
         layout = go.Layout (
             title = "Swarm plot for {}".format(found_in["genes"].values[0]),
-            height= 600
+            height= 700
         )
         # prepare datafrarme
         found_in = found_in.drop(["genes"], axis=1).T.reset_index()
         found_in.columns = ["Sample", "TPM"]
+
         # process metadata and add to the df
         metadata_selected = filter_data(metadata, "Dataset", datasets_selected)
         processed_df = sync_df(metadata_selected, found_in)
+
+        # filter by ter
+        processed_df = process_ter(processed_df, ter)
 
         hover_data = ["Sample",  "shared_num_same_col", "Tissue", "Dataset","NHU_differentiation", "Gender", "TER", "Substrate"]
         x = "Dataset"
         if not processed_df.empty:
             if not datasets_selected:
-                return "No datapoints to plot", { "data" : {}}  
+                return "Select a dataset first", { "data" : {}}  
             elif len(datasets_selected) == 1:
                 x = "subset_name"
 
-            config={"x":x , "y":"TPM", "color":"Dataset", "hover_data": hover_data}
-            fig = select_plot(processed_df, config, plot_type)
+            config={"x":x , "y":"TPM", "color":"Dataset", "hover_data": hover_data, "xaxis_type": xaxis_type}
+            df_plot = processed_df.copy(deep=True)
+            fig = select_plot_type(processed_df, config, plot_type)
             fig.update_layout(layout)
-            fig.update_yaxes(tick0=25, dtick=100)
+            # fig.update_yaxes(tick0=25, dtick=100)
             return ret_str, fig
         else:
             return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}} 
@@ -204,30 +209,42 @@ def create_medata_plot(found_in, metadata, user_input, datasets_selected, ter, x
     
         # create figure   
         hover_data = ["Sample",  "shared_num_same_col", "Tissue", "Dataset", "NHU_differentiation", "Gender", "TER", "Substrate"]
-        fig = px.strip(metadata_selected, x=xaxis, y='TPM', color="Dataset", 
-                hover_data = hover_data)
+        fig = px.strip(metadata_selected, x=xaxis, y='TPM', color="Dataset", hover_data = hover_data)
         fig.update_layout(layout)
         return ret_str, fig
     else:
         return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}}  
 
-def select_plot(df, config, plot_type):
-    x, y, color, hover_data = config["x"], config["y"], config["color"], config["hover_data"]
+def select_plot_type(df, config, plot_type):
+    x, y, color, hover_data, xaxis_type = config["x"], config["y"], config["color"], config["hover_data"], config["xaxis_type"]
     ret_fig = {}
+
+    log = False
+    if xaxis_type != "linear":
+        log = True
+        df[df["TPM"] < 1] = 1.0
+
     if plot_type == "violin":
-        ret_fig = px.violin(df, x=x, y=y, color=color, box=True, hover_data = hover_data)
+        ret_fig = px.violin(df, x=x, y=y, color=color, box=True, hover_data = hover_data, log_y=log)
     elif plot_type == "violin_points":
-        ret_fig = px.violin(df, x=x, y=y, color=color, box=True,  points="all", hover_data = hover_data)
+        ret_fig = px.violin(df, x=x, y=y, color=color, box=True,  points="all", hover_data = hover_data, log_y=log)
     elif plot_type == "box":
-        ret_fig = px.box(df, x=x, y=y, color=color, hover_data = hover_data)
+        ret_fig = px.box(df, x=x, y=y, color=color, hover_data = hover_data, log_y=log)
         ret_fig.update_traces(boxmean="sd")
     elif plot_type == "box_points":
-        ret_fig = px.box(df, x=x, y=y, color=color, points="all", hover_data = hover_data)
+        ret_fig = px.box(df, x=x, y=y, color=color, points="all", hover_data = hover_data, log_y=log)
         ret_fig.update_traces(boxmean="sd")
     else:
-        ret_fig = px.strip(df, x=x, y=y, color=color, hover_data = hover_data)
+        ret_fig = px.strip(df, x=x, y=y, color=color, hover_data = hover_data, log_y=log)
+        
     return ret_fig
 
+def process_ter(df, ter):
+    if ter != None and "tight" in ter:
+        prcsd_df = df[df["TER"].astype(np.float16) >= 500]
+        return prcsd_df 
+    return df
+    
 ##### HTML functions #####
 def create_datasets_tick_box(data_dict):
     # itereate through each of the dictionary and create the html code
@@ -291,10 +308,9 @@ def metadata_menu(metadata_df):
         ),
         html.Label('Select the X Axis type'),
         dcc.RadioItems(
-            id="select-xaxis-type", value='Normal',
+            id="select-xaxis-type", value='linear',
             options = [
                 {'label':'Linear', 'value':'linear'},
-                {'label':'Log2 ', 'value':'log2'},
                 {'label':'Log10 ', 'value':'log10'}
             ]
         ), html.Br(),
@@ -303,9 +319,9 @@ def metadata_menu(metadata_df):
             id="xaxis-dropdown", value="subset_name",
             options=[{"label": i, "value": i} for i in x_axis_options]
         ), html.Br(),
-        html.Label("After you selected the configuration from above press the below button to plot"), 
-        html.Br(),
-        html.Button(id='metadata-plot', n_clicks=0, children='Apply changes'),
+        html.Label("After you selected the configuration from above press the below button to plot")
+        # html.Br(),
+        # html.Button(id='metadata-plot', n_clicks=0, children='Apply changes'),
     ])
 
 def export_panel():
@@ -329,11 +345,11 @@ def init_callbacks(dash_app, data_dict):
     # latest fig to save
     @dash_app.callback(
          [Output('search-result', "children"), Output('dataset-plots', "figure"), Output('intermediate-value', 'children')],
-         [Input('plot-gene', 'n_clicks'), Input('metadata-plot', 'n_clicks'),
+         [Input('plot-gene', 'n_clicks'),
           Input("gene-input","n_submit")],
          [State("gene-input", "value"),  State("data-checklist", "value"), State("ter-checklist","value"), State("xaxis-dropdown", "value"), State("select-plot-type","value"), State("select-xaxis-type","value") ]
     )
-    def button_router(btn_1, btn_2, n_submit, user_input, datasets_selected, ter, xaxis, plot_type, xaxis_type):
+    def button_router(btn_1, n_submit, user_input, datasets_selected, ter, xaxis, plot_type, xaxis_type):
         ctx = dash.callback_context
         ret_data = pd.DataFrame().to_json(date_format='iso', orient='split') 
         # get the button_id
@@ -349,15 +365,11 @@ def init_callbacks(dash_app, data_dict):
             found_in = all_tsv[all_tsv["genes"].str.fullmatch("\\b"+prcsd_str+"\\b", case = False, na=False)]
             ret_data = found_in.to_json(date_format='iso', orient='split')
 
-            if button_id == "plot-gene" or button_id == "gene-input":
-                print("Dataset plot has been triggered")  
-                ret_string, last_fig = create_datasets_plot(found_in, metadata, prcsd_str, datasets_selected, plot_type, xaxis_type)
-                return ret_string, last_fig, ret_data
-            else:
-                print("Metadata plot has been triggered")
-                # ret_string, last_fig = create_medata_plot(found_in, metadata, prcsd_str, datasets_selected, ter, xaxis)
-                
-                return ret_string, last_fig, ret_data
+
+            ret_string, last_fig = create_datasets_plot(found_in, metadata, prcsd_str, datasets_selected, ter, plot_type, xaxis_type)
+
+            # ret_string, last_fig = create_medata_plot(found_in, metadata, prcsd_str, datasets_selected, ter, xaxis)
+            return ret_string, last_fig, ret_data
         return "Search for gene and click submit", { "data" : {} }, ret_data
 
     @dash_app.callback(
