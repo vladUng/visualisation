@@ -145,7 +145,7 @@ def sync_df(df_metadata, df):
     return metadata_sorted
 
 ##### Plotting functions #####
-def create_datasets_plot(found_in, metadata, user_input, datasets_selected):
+def create_datasets_plot(found_in, metadata, user_input, datasets_selected, plot_type, xaxis_type):
     if not found_in.empty:
         ret_str = 'Gene {} was found'.format(user_input)
 
@@ -167,11 +167,12 @@ def create_datasets_plot(found_in, metadata, user_input, datasets_selected):
             if not datasets_selected:
                 return "No datapoints to plot", { "data" : {}}  
             elif len(datasets_selected) == 1:
-                x = "shared_num_same_col"
+                x = "subset_name"
 
-            # NOTE: ANDREW  modify this for new label shared_num_same_col
-            fig = px.strip(processed_df, x=x, y='TPM', color="Dataset", hover_data = hover_data)
+            config={"x":x , "y":"TPM", "color":"Dataset", "hover_data": hover_data}
+            fig = select_plot(processed_df, config, plot_type)
             fig.update_layout(layout)
+            fig.update_yaxes(tick0=25, dtick=100)
             return ret_str, fig
         else:
             return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}} 
@@ -202,13 +203,30 @@ def create_medata_plot(found_in, metadata, user_input, datasets_selected, ter, x
         metadata_selected = sync_df(metadata_selected, found_in)
     
         # create figure   
-        hover_data = ["Sample",  "shared_num_same_col", "Tissue", "Dataset","NHU_differentiation", "Gender", "TER", "Substrate"]
+        hover_data = ["Sample",  "shared_num_same_col", "Tissue", "Dataset", "NHU_differentiation", "Gender", "TER", "Substrate"]
         fig = px.strip(metadata_selected, x=xaxis, y='TPM', color="Dataset", 
                 hover_data = hover_data)
         fig.update_layout(layout)
         return ret_str, fig
     else:
         return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}}  
+
+def select_plot(df, config, plot_type):
+    x, y, color, hover_data = config["x"], config["y"], config["color"], config["hover_data"]
+    ret_fig = {}
+    if plot_type == "violin":
+        ret_fig = px.violin(df, x=x, y=y, color=color, box=True, hover_data = hover_data)
+    elif plot_type == "violin_points":
+        ret_fig = px.violin(df, x=x, y=y, color=color, box=True,  points="all", hover_data = hover_data)
+    elif plot_type == "box":
+        ret_fig = px.box(df, x=x, y=y, color=color, hover_data = hover_data)
+        ret_fig.update_traces(boxmean="sd")
+    elif plot_type == "box_points":
+        ret_fig = px.box(df, x=x, y=y, color=color, points="all", hover_data = hover_data)
+        ret_fig.update_traces(boxmean="sd")
+    else:
+        ret_fig = px.strip(df, x=x, y=y, color=color, hover_data = hover_data)
+    return ret_fig
 
 ##### HTML functions #####
 def create_datasets_tick_box(data_dict):
@@ -226,22 +244,23 @@ def create_datasets_tick_box(data_dict):
             id = "data-checklist",
             options = options, value = datasets,
             style = { "column-count": "2"}),
-        html.Br(),
-        dcc.RadioItems(
-            id = "select-all-none",
-            options= [
-                {'label': 'All datasets', 'value': 'all'},
-                {'label': 'Include incl_ datasets', 'value': 'incl'},
-                {'label': 'Exclude incl_ datasets', 'value': 'excl'},
-                {'label': 'None datasets', 'value': 'none'},
-            ]
-        ),
     ])
 
+#TODO: Rename this to create dataset panel
 def create_gene_search(data_dict):
     # column names should be the same as the ones from the dataframe containing the gen
     return html.Div(id="gene-controls", children = [
                 create_datasets_tick_box(data_dict),
+                html.Br(),
+                dcc.RadioItems(
+                    id = "select-all-none",
+                    options= [
+                        {'label': 'All datasets', 'value': 'all'},
+                        {'label': 'Include incl_ datasets', 'value': 'incl'},
+                        {'label': 'Exclude incl_ datasets', 'value': 'excl'},
+                        {'label': 'None datasets', 'value': 'none'},
+                    ]
+                ),
                 html.Br(),
                 html.Button(id='plot-gene', n_clicks=0, children='Plot'),
                 html.Div(id='search-result'), 
@@ -250,27 +269,43 @@ def create_gene_search(data_dict):
 
 def metadata_menu(metadata_df):
     # we need to remove some non-numerical values
-    cleaned_ter = metadata_df["TER"].dropna().astype(float)
-    slider_markers = {}
-    for marker in range(0, int(cleaned_ter.max()), 1000):
-        slider_markers[marker] = {"label": str(marker)}
-
+    x_axis_options = ["NHU_differentiation", "Tissue", "Gender", "Diagnosis", "Substrate", "Dataset", "subset_name"]
     return html.Div(id="metadata-menu", style={"column-count":"1", "margin-top": "40%"},
      children=[
-        html.H5("Metadata panel"),
+        html.H5("Figure Configuration"),
         html.Label('Indicate tight barrier? (>500)'),
         dcc.Checklist(id="ter-checklist",
                 options=[
                     {'label': 'Tight TER barrier', 'value': 'tight'}
-        ]), html.Br(),
+        ]), 
+        html.Label('Select the figure plot type'),
+        dcc.RadioItems(
+            id="select-plot-type", value='swarm',
+            options = [
+                {'label':'Swarm', 'value':'swarm',},
+                {'label':'Violin', 'value':'violin'},
+                {'label': 'Vilion and points', 'value': 'violin_points'},
+                {'label':'Box', 'value':'box'},
+                {'label':'Box and points', 'value':'box_points'}
+            ]
+        ),
+        html.Label('Select the X Axis type'),
+        dcc.RadioItems(
+            id="select-xaxis-type", value='Normal',
+            options = [
+                {'label':'Linear', 'value':'linear'},
+                {'label':'Log2 ', 'value':'log2'},
+                {'label':'Log10 ', 'value':'log10'}
+            ]
+        ), html.Br(),
         html.Label('Select the X Axis'),
         dcc.Dropdown(
-            id="xaxis-dropdown", value="shared_num_same_col",
-            options=[{"label": i, "value": i} for i in ["NHU_differentiation", "Tissue", "Gender", "Diagnosis", "Substrate", "Dataset", "shared_num_same_col"]]
+            id="xaxis-dropdown", value="subset_name",
+            options=[{"label": i, "value": i} for i in x_axis_options]
         ), html.Br(),
         html.Label("After you selected the configuration from above press the below button to plot"), 
         html.Br(),
-        html.Button(id='metadata-plot', n_clicks=0, children='Plot'),
+        html.Button(id='metadata-plot', n_clicks=0, children='Apply changes'),
     ])
 
 def export_panel():
@@ -296,9 +331,9 @@ def init_callbacks(dash_app, data_dict):
          [Output('search-result', "children"), Output('dataset-plots', "figure"), Output('intermediate-value', 'children')],
          [Input('plot-gene', 'n_clicks'), Input('metadata-plot', 'n_clicks'),
           Input("gene-input","n_submit")],
-         [State("gene-input", "value"),  State("data-checklist", "value"), State("ter-checklist","value"), State("xaxis-dropdown", "value")]
+         [State("gene-input", "value"),  State("data-checklist", "value"), State("ter-checklist","value"), State("xaxis-dropdown", "value"), State("select-plot-type","value"), State("select-xaxis-type","value") ]
     )
-    def button_router(btn_1, btn_2, n_submit, user_input, datasets_selected, ter, xaxis):
+    def button_router(btn_1, btn_2, n_submit, user_input, datasets_selected, ter, xaxis, plot_type, xaxis_type):
         ctx = dash.callback_context
         ret_data = pd.DataFrame().to_json(date_format='iso', orient='split') 
         # get the button_id
@@ -315,12 +350,13 @@ def init_callbacks(dash_app, data_dict):
             ret_data = found_in.to_json(date_format='iso', orient='split')
 
             if button_id == "plot-gene" or button_id == "gene-input":
-                print("Dataset plot has been trieggered")  
-                ret_string, last_fig = create_datasets_plot(found_in, metadata, prcsd_str, datasets_selected)
+                print("Dataset plot has been triggered")  
+                ret_string, last_fig = create_datasets_plot(found_in, metadata, prcsd_str, datasets_selected, plot_type, xaxis_type)
                 return ret_string, last_fig, ret_data
             else:
                 print("Metadata plot has been triggered")
-                ret_string, last_fig = create_medata_plot(found_in, metadata, prcsd_str, datasets_selected, ter, xaxis)
+                # ret_string, last_fig = create_medata_plot(found_in, metadata, prcsd_str, datasets_selected, ter, xaxis)
+                
                 return ret_string, last_fig, ret_data
         return "Search for gene and click submit", { "data" : {} }, ret_data
 
