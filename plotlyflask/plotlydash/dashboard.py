@@ -162,9 +162,6 @@ def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter,
         metadata_selected = filter_data(metadata, "Dataset", datasets_selected)
         processed_df = sync_df(metadata_selected, found_in)
 
-        # filter by ter
-        processed_df = process_ter(processed_df, ter)
-
         hover_data = ["Sample",  "shared_num_same_col", "Tissue", "Dataset","NHU_differentiation", "Gender", "TER", "Substrate"]
         x = "Dataset"
         if not processed_df.empty:
@@ -173,47 +170,22 @@ def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter,
             elif len(datasets_selected) == 1:
                 x = "subset_name"
 
+            # create the main trace
             config={"x":x , "y":"TPM", "color":"Dataset", "hover_data": hover_data, "xaxis_type": xaxis_type}
-            df_plot = processed_df.copy(deep=True)
             fig = select_plot_type(processed_df, config, plot_type)
+
+            # add the ter symbols if needed
+            if ter != None and "tight" in ter:
+                ter_figs = change_symbol_ter(processed_df, config, plot_type)
+                if ter_figs is not None:
+                    for ter_fig in ter_figs:
+                        fig.add_trace(ter_fig.data[0])
             fig.update_layout(layout)
-            # fig.update_yaxes(tick0=25, dtick=100)
             return ret_str, fig
         else:
             return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}} 
     else:
         return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}} 
-
-def create_medata_plot(found_in, metadata, user_input, datasets_selected, ter, xaxis):
-    if not found_in.empty:
-        ret_str = 'Gene {} was found'.format(user_input)
-        # create the figure layout
-        layout = go.Layout (
-            title = "Swarm plot for {}".format(found_in["genes"].values[0]),
-            height= 600
-        )
-        # prepare datafrarme
-        found_in = found_in.drop(["genes"], axis=1).T.reset_index()
-        found_in.columns = ["Sample", "TPM"]
-        # process metadata and add to the df
-        metadata_selected = metadata.copy(deep=True)
-
-        if ter != None and "tight" in ter:
-            metadata_selected = metadata_selected[metadata_selected["TER"].astype(np.float16) >= 500]
-
-        if metadata_selected.empty:
-            return "No TPMs values for gene: {} found with this configurations".format(user_input),  {"data" : {}} 
-
-        # synchronize the metadata df with the tpm dataset if not empty
-        metadata_selected = sync_df(metadata_selected, found_in)
-    
-        # create figure   
-        hover_data = ["Sample",  "shared_num_same_col", "Tissue", "Dataset", "NHU_differentiation", "Gender", "TER", "Substrate"]
-        fig = px.strip(metadata_selected, x=xaxis, y='TPM', color="Dataset", hover_data = hover_data)
-        fig.update_layout(layout)
-        return ret_str, fig
-    else:
-        return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}}  
 
 def select_plot_type(df, config, plot_type):
     x, y, color, hover_data, xaxis_type = config["x"], config["y"], config["color"], config["hover_data"], config["xaxis_type"]
@@ -239,12 +211,18 @@ def select_plot_type(df, config, plot_type):
         
     return ret_fig
 
-def process_ter(df, ter):
-    if ter != None and "tight" in ter:
-        prcsd_df = df[df["TER"].astype(np.float16) >= 500]
-        return prcsd_df 
-    return df
-    
+def change_symbol_ter(df, config, plot_type):
+    ter_df = df[df["TER"].astype(np.float16) >= 500]
+    if (not ter_df.empty) and (plot_type not in ['violin', 'box']):
+        # mark the datasets
+        ter_figs = []
+        for dataset in ter_df["Dataset"].unique().tolist():
+            ter_fig = select_plot_type(ter_df[ter_df["Dataset"] == dataset], config, plot_type)
+            ter_fig.update_traces(marker_symbol='x', marker_size=12)
+            ter_fig.update_traces(name=ter_fig.data[0].name+"_tight")
+            ter_figs.append(ter_fig)
+        return ter_figs
+
 ##### HTML functions #####
 def create_datasets_tick_box(data_dict):
     # itereate through each of the dictionary and create the html code
@@ -463,7 +441,4 @@ def init_dashboard(server):
         ]),
     ])
     return dash_app.server
-
-
-
 
