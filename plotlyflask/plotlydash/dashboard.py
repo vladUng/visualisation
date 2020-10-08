@@ -7,7 +7,7 @@ from dash.dependencies import Input, Output, State
 import plotly.express as px
 import plotly.graph_objects as go
 
-from os import path
+from os import path, name
 import time 
 from datetime import datetime
 
@@ -107,12 +107,10 @@ def process_data(df_metadata, all_tsv):
         # update all_tsv
         selected_samples
         all_tsv_selected = all_tsv[selected_samples]
-        # all_tsv_selected = all_tsv_selected.drop(["genes"], axis=1)
         all_tsv_selected.columns = duplicated_samples
         new_cols_all_tsv = pd.concat([new_cols_all_tsv, all_tsv_selected], axis=1)
         
     df_metadata = pd.merge(df_metadata, new_rows_metadata, how="outer")
-    # all_tsv = pd.merge(all_tsv, new_rows_all_tsv, how="outer")
     all_tsv = pd.concat([all_tsv, new_cols_all_tsv], axis=1)
     return df_metadata, all_tsv
 
@@ -145,7 +143,7 @@ def sync_df(df_metadata, df):
     return metadata_sorted
 
 ##### Plotting functions #####
-def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter, plot_type, xaxis_type):
+def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter, plot_type, xaxis, xaxis_type):
     if not found_in.empty:
         ret_str = 'Gene {} was found'.format(user_input)
 
@@ -163,15 +161,12 @@ def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter,
         processed_df = sync_df(metadata_selected, found_in)
 
         hover_data = ["Sample",  "shared_num_same_col", "Tissue", "Dataset","NHU_differentiation", "Gender", "TER", "Substrate"]
-        x = "Dataset"
         if not processed_df.empty:
             if not datasets_selected:
-                return "Select a dataset first", { "data" : {}}  
-            elif len(datasets_selected) == 1:
-                x = "subset_name"
+                return "Select a dataset first", { "data" : {}}, found_in
 
             # create the main trace
-            config={"x":x , "y":"TPM", "color":"Dataset", "hover_data": hover_data, "xaxis_type": xaxis_type}
+            config={"x":xaxis , "y":"TPM", "color":"Dataset", "hover_data": hover_data, "xaxis_type": xaxis_type}
             fig = select_plot_type(processed_df, config, plot_type)
 
             # add the ter symbols if needed
@@ -181,11 +176,9 @@ def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter,
                     for ter_fig in ter_figs:
                         fig.add_trace(ter_fig.data[0])
             fig.update_layout(layout)
-            return ret_str, fig
-        else:
-            return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}} 
-    else:
-        return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}} 
+            return ret_str, fig, processed_df
+
+    return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}}, found_in 
 
 def select_plot_type(df, config, plot_type):
     x, y, color, hover_data, xaxis_type = config["x"], config["y"], config["color"], config["hover_data"], config["xaxis_type"]
@@ -218,7 +211,7 @@ def change_symbol_ter(df, config, plot_type):
         ter_figs = []
         for dataset in ter_df["Dataset"].unique().tolist():
             ter_fig = select_plot_type(ter_df[ter_df["Dataset"] == dataset], config, plot_type)
-            ter_fig.update_traces(marker_symbol='x', marker_size=12)
+            ter_fig.update_traces(marker_symbol='x-open', marker_size=13, marker_color="black")
             ter_fig.update_traces(name=ter_fig.data[0].name+"_tight")
             ter_figs.append(ter_fig)
         return ter_figs
@@ -268,12 +261,12 @@ def metadata_menu(metadata_df):
     return html.Div(id="metadata-menu", style={"column-count":"1", "margin-top": "40%"},
      children=[
         html.H5("Figure Configuration"),
-        html.Label('Indicate tight barrier? (>500)'),
+        html.H6('Indicate tight barrier? (>500)'),
         dcc.Checklist(id="ter-checklist",
                 options=[
                     {'label': 'Tight TER barrier', 'value': 'tight'}
         ]), 
-        html.Label('Select the figure plot type'),
+        html.H6('Select the figure plot type'),
         dcc.RadioItems(
             id="select-plot-type", value='swarm',
             options = [
@@ -284,22 +277,19 @@ def metadata_menu(metadata_df):
                 {'label':'Box and points', 'value':'box_points'}
             ]
         ),
-        html.Label('Select the X Axis type'),
+        html.H6('Select the X Axis type'),
         dcc.RadioItems(
             id="select-xaxis-type", value='linear',
             options = [
                 {'label':'Linear', 'value':'linear'},
                 {'label':'Log10 ', 'value':'log10'}
             ]
-        ), html.Br(),
-        html.Label('Select the X Axis'),
+        ), 
+        html.H6('Select the X Axis'),
         dcc.Dropdown(
             id="xaxis-dropdown", value="subset_name",
             options=[{"label": i, "value": i} for i in x_axis_options]
-        ), html.Br(),
-        html.Label("After you selected the configuration from above press the below button to plot")
-        # html.Br(),
-        # html.Button(id='metadata-plot', n_clicks=0, children='Apply changes'),
+        )
     ])
 
 def export_panel():
@@ -328,25 +318,18 @@ def init_callbacks(dash_app, data_dict):
          [State("gene-input", "value"),  State("data-checklist", "value"), State("ter-checklist","value"), State("xaxis-dropdown", "value"), State("select-plot-type","value"), State("select-xaxis-type","value") ]
     )
     def button_router(btn_1, n_submit, user_input, datasets_selected, ter, xaxis, plot_type, xaxis_type):
-        ctx = dash.callback_context
-        ret_data = pd.DataFrame().to_json(date_format='iso', orient='split') 
-        # get the button_id
-        if not ctx.triggered:
-            button_id = 'No clicks yet'
-        else:
-            button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
+        ret_data = pd.DataFrame().to_json(date_format='iso', orient='split') 
         prcsd_str = user_input.strip()
         if prcsd_str:
-            all_tsv = data_dict["all_tsv"]
-            metadata = data_dict["metadata"]
+            all_tsv, metadata = data_dict["all_tsv"], data_dict["metadata"]
+            # search for the gene
             found_in = all_tsv[all_tsv["genes"].str.fullmatch("\\b"+prcsd_str+"\\b", case = False, na=False)]
-            ret_data = found_in.to_json(date_format='iso', orient='split')
+            # create the figure
+            ret_string, last_fig, prcsd_data = create_datasets_plot(found_in, metadata, prcsd_str, datasets_selected, ter, plot_type, xaxis, xaxis_type)
+            # transformed the filtered data to json
+            ret_data = prcsd_data.to_json(date_format='iso', orient='split')
 
-
-            ret_string, last_fig = create_datasets_plot(found_in, metadata, prcsd_str, datasets_selected, ter, plot_type, xaxis_type)
-
-            # ret_string, last_fig = create_medata_plot(found_in, metadata, prcsd_str, datasets_selected, ter, xaxis)
             return ret_string, last_fig, ret_data
         return "Search for gene and click submit", { "data" : {} }, ret_data
 
@@ -378,7 +361,10 @@ def init_callbacks(dash_app, data_dict):
         [State("plot-width", "value"), State("plot-height", "value"), State("plot-scale", "value"), State("dataset-plots", "figure")]
     )
     def export_plot(btn_1, btn_2, data_json, width, height, scale, figure):
-        path =  "./exported_data/"
+        if name == 'nt':
+            path =  "~/exported_data/"
+        else:
+            path = "./exported_data/"
         ret_string = "There is no figure to save"
 
         ctx = dash.callback_context
@@ -398,8 +384,15 @@ def init_callbacks(dash_app, data_dict):
             figure_data_df = pd.read_json(data_json, orient='split')
             filepath = "{}data-jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H:%M:%S'), ".csv")
             # we need to remove the duplicated samples
-            unique_samples = [col for col in figure_data_df.columns.astype(str) if "_incl_" not in col]
-            figure_data_df[unique_samples].to_csv(filepath)
+            figure_data_df = figure_data_df.sort_values(by="Sample")
+            df_to_export = pd.DataFrame(figure_data_df["Sample"])
+            for dataset in figure_data_df["Dataset"].values:
+                df = figure_data_df[figure_data_df["Dataset"] == dataset]["TPM"]
+                df_to_export = pd.concat([df_to_export, df], axis=1)
+
+            df_to_export.columns = np.insert(figure_data_df["Dataset"].values, 0, "Sample")
+            df_to_export = df_to_export.fillna("N/A")
+            df_to_export.to_csv(filepath)
             ret_string = "Data saved to {}".format(filepath)
         return ret_string
         
