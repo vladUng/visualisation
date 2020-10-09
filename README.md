@@ -9,12 +9,13 @@ This is a tool that it is used by the JBU unit to visualise a gene's TPM's value
 - [3. Installation](#3-installation)
   - [3.1. Adding a new dataset](#31-adding-a-new-dataset)
 - [4. Features](#4-features)
-- [5. Notes on implementation](#5-notes-on-implementation)
-  - [5.1. Technologies](#51-technologies)
-  - [5.2. Why Flask + Dash](#52-why-flask--dash)
-  - [5.3. Architecture](#53-architecture)
-  - [5.4. Tips](#54-tips)
-- [6. (Google) Cloud integration](#6-google-cloud-integration)
+- [5. Wishlist](#5-wishlist)
+- [6. Notes on implementation](#6-notes-on-implementation)
+  - [6.1. Technologies](#61-technologies)
+  - [6.2. Why Flask + Dash](#62-why-flask--dash)
+  - [6.3. Architecture](#63-architecture)
+  - [6.4. Tips](#64-tips)
+- [7. (Google) Cloud integration](#7-google-cloud-integration)
 
 <!-- /TOC -->
 
@@ -54,19 +55,27 @@ When a new dataset is added:
 
 * Do an exact search on the gene entered and plot the TPMs value 
 * When one dataset is select, it plots the shared number column values
-* Change the x-axis 
+* Change the x-axis select between: Sample, shared_num_same_col, Tissue, Dataset,NHU_differentiation, Gender, TER, Substrate
 * Filter out the loose TER barrier 
 * Export the plot to PDF and that data to .CSV
+* Select different type of figure plots: Swarm, violin, violin and points, box, box and points
+* Choose between linear and log10 axis 
 
-# 5. Notes on implementation
+# 5. Wishlist 
 
-## 5.1. Technologies 
+Below are features to be implemented: 
+
+* mann whitney, dataset pairwise comparison
+
+# 6. Notes on implementation
+
+## 6.1. Technologies 
 The application is build on [Dash](https://plotly.com/dash/) which is the client-server solution for the interactive plotting library [Plotly](https://plotly.com/). Esentially, Dash is a wrapper arround the [Flask](https://flask.palletsprojects.com/en/1.1.x/) micro-server framework (if you are familiar with Node.js, it's similar to Restify). This means that on top of the Plotly graphing tools we can now create a GUI on a web-browser. See the [documentation](https://dash.plotly.com/layout) on Dash about how to add elements (it's actually good).
 
-## 5.2. Why Flask + Dash
+## 6.2. Why Flask + Dash
 Even though Dash is a wrapper around a Flask (i.e. that a Flask server is started with a Dash app) and there is not an explicit need to run the Flask, we do that. The reason for this is that we initially wanted to integrate the tool in Google Cloud Service (more on this Cloud section) and we needed a little bit more freedom than the Dash let us. 
 
-## 5.3. Architecture 
+## 6.3. Architecture 
 I have followed [this tutorial](https://hackersandslackers.com/plotly-dash-with-flask/) on how to do the integration. You don't need to follow the blog if you don't want to get the details, the important points are below:
 * The `wsgi.py` does the initialisation and starts the server. This includes running the init function from the root folder. 
 * The init script runs the flask server with the configuration from `config.py` that tells flask where to look for the resources (e.g. CSS files, html, images etc.). Also, it starts the Dash app
@@ -79,13 +88,13 @@ I have followed [this tutorial](https://hackersandslackers.com/plotly-dash-with-
 * The two plotting functions are very similar and probably can be abastrated further, but we wanted to keep seperately when we extend the functionality for the metadata panel
 * The `viz_tools/` folder was intended to integrate some of the functionality from the BU clustering project to this one, but we haven't actually completed that. Moreover, not sure if it's required, but left the files just in case that will be needed. 
 
-## 5.4. Tips
+## 6.4. Tips
 
 * If you create a new file and need access to the flask app, simply import `from flask import current_app as app`
 * An html element value can be se only by one callback (i.e. Output on the dash_app decorators) 
 
 
-# 6. (Google) Cloud integration
+# 7. (Google) Cloud integration
 
 Below are some of my notes from when I've tried to integrate the visualisation tool with Google Cloud. Some of them may be a bit outadate so it's better to consult the Google's oficial documentation. Also, the git repo's history may be useful. We've used the following services (which you need to set up first on your Google Cloud Project -GCP-):
 * Google App Engine

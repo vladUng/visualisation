@@ -98,14 +98,14 @@ def process_data(df_metadata, all_tsv):
         for initial in incl_col.split("_"):
             initials += initial[0]
         # update the metadata
-        duplicated_samples = [sample+initials for sample in selected_samples]
+        duplicated_samples = [sample+initials for sample in metadata_selected["Sample"].values]
         metadata_selected = metadata_selected.drop("Sample", axis=1)
         metadata_selected["Sample"] = duplicated_samples
         metadata_selected["Dataset"] = incl_col
+        metadata_selected["subset_name"] = incl_col
         new_rows_metadata = new_rows_metadata.append(metadata_selected, ignore_index=True)
 
         # update all_tsv
-        selected_samples
         all_tsv_selected = all_tsv[selected_samples]
         all_tsv_selected.columns = duplicated_samples
         new_cols_all_tsv = pd.concat([new_cols_all_tsv, all_tsv_selected], axis=1)
@@ -188,7 +188,7 @@ def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter,
 
             # if the maximum value for tpm is 25 change the tick
             if processed_df["TPM"].values.max() <= 25 and xaxis_type == "linear":
-                fig.update_yaxes(tick0=0, dtick=2)
+                fig.update_yaxes(range=[0, 25])
 
             fig.update_layout(layout)
             return ret_str, fig, processed_df
@@ -378,7 +378,7 @@ def init_callbacks(dash_app, data_dict):
     def export_plot(btn_1, btn_2, data_json, width, height, scale, figure, datasets):
         # checking os
         if name == 'nt':
-            path =  "~exported_data\\"
+            path =  "exported_data\\"
         else:
             path = "./exported_data/"
         ret_string = "There is no figure to save"
@@ -402,11 +402,20 @@ def init_callbacks(dash_app, data_dict):
 
             # we need to remove the duplicated samples
             # find the duplicated samples, this works with the assumption that all the data has different TPMs
-            rm_samples = samples_to_remove(figure_data_df)
-            figure_data_df = figure_data_df[~figure_data_df["Sample"].isin(rm_samples)]
+            # rm_samples = samples_to_remove(figure_data_df)
+            # figure_data_df = figure_data_df[~figure_data_df["Sample"].isin(rm_samples)]
 
-            figure_data_df = figure_data_df.fillna("N/A")
-            figure_data_df[["TPM", "subset_name", "Sample", "Dataset"]].to_csv(filepath)
+            unique_subsets = figure_data_df["subset_name"].unique()
+            export_df = pd.DataFrame()
+            for subset_name in unique_subsets:
+                dummy_df = figure_data_df[figure_data_df["subset_name"] == subset_name]["TPM"].T
+                export_df = pd.concat([export_df, dummy_df], axis=1)
+
+            export_df.columns = [subset+"_TPM" for subset in unique_subsets]
+            # we need to put the nan values at the bottom and to that we need to sort each column individualy and re-concat
+            export_df = pd.concat([export_df[col].sort_values().reset_index(drop=True) for col in export_df], axis=1, ignore_index=True)
+            export_df.to_csv(filepath, index=False)
+            # figure_data_df[["TPM", "subset_name", "Sample", "Dataset"]].to_csv(filepath)
             ret_string = "Data saved to {}".format(filepath)
         return ret_string
                 
