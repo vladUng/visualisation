@@ -142,6 +142,15 @@ def sync_df(df_metadata, df):
     metadata_sorted["TPM"] = df_common["TPM"].values
     return metadata_sorted
 
+def samples_to_remove(df):
+    #used to remove _incl samples when exporting the .csv files
+    ret_samples = []
+    # samples duplicated by tpm
+    duplicated_samples = df[df["TPM"].duplicated()]["Sample"].values
+    # but we need to check if these are the duplicates of the _incl (maybe in the future there will be samples that have the exact TPM value)
+    ret_samples = [sample for sample in duplicated_samples if "_incl_" in sample]
+    return ret_samples
+
 ##### Plotting functions #####
 def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter, plot_type, xaxis, xaxis_type):
     if not found_in.empty:
@@ -166,15 +175,21 @@ def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter,
                 return "Select a dataset first", { "data" : {}}, found_in
 
             # create the main trace
+            
             config={"x":xaxis , "y":"TPM", "color":"Dataset", "hover_data": hover_data, "xaxis_type": xaxis_type}
             fig = select_plot_type(processed_df, config, plot_type)
 
-            # add the ter symbols if needed
+            # add the ter symbols if needed 
             if ter != None and "tight" in ter:
                 ter_figs = change_symbol_ter(processed_df, config, plot_type)
                 if ter_figs is not None:
                     for ter_fig in ter_figs:
                         fig.add_trace(ter_fig.data[0])
+
+            # if the maximum value for tpm is 25 change the tick
+            if processed_df["TPM"].values.max() <= 25 and xaxis_type == "linear":
+                fig.update_yaxes(tick0=0, dtick=2)
+
             fig.update_layout(layout)
             return ret_str, fig, processed_df
 
@@ -358,11 +373,12 @@ def init_callbacks(dash_app, data_dict):
     @dash_app.callback(
         Output("output-export-csv", 'children'),
         [Input("export-plot", "n_clicks"), Input("export-data", "n_clicks"), Input('intermediate-value', 'children')],
-        [State("plot-width", "value"), State("plot-height", "value"), State("plot-scale", "value"), State("dataset-plots", "figure")]
+        [State("plot-width", "value"), State("plot-height", "value"), State("plot-scale", "value"), State("dataset-plots", "figure"), State("data-checklist", "value")]
     )
-    def export_plot(btn_1, btn_2, data_json, width, height, scale, figure):
+    def export_plot(btn_1, btn_2, data_json, width, height, scale, figure, datasets):
+        # checking os
         if name == 'nt':
-            path =  "~/exported_data/"
+            path =  "~exported_data\\"
         else:
             path = "./exported_data/"
         ret_string = "There is no figure to save"
@@ -382,20 +398,18 @@ def init_callbacks(dash_app, data_dict):
                 ret_string = "Plot saved to {}".format(filepath)
         elif button_id == "export-data":
             figure_data_df = pd.read_json(data_json, orient='split')
-            filepath = "{}data-jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H:%M:%S'), ".csv")
-            # we need to remove the duplicated samples
-            figure_data_df = figure_data_df.sort_values(by="Sample")
-            df_to_export = pd.DataFrame(figure_data_df["Sample"])
-            for dataset in figure_data_df["Dataset"].values:
-                df = figure_data_df[figure_data_df["Dataset"] == dataset]["TPM"]
-                df_to_export = pd.concat([df_to_export, df], axis=1)
+            filepath = "{}data-jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H-%M-%S'), ".csv")
 
-            df_to_export.columns = np.insert(figure_data_df["Dataset"].values, 0, "Sample")
-            df_to_export = df_to_export.fillna("N/A")
-            df_to_export.to_csv(filepath)
+            # we need to remove the duplicated samples
+            # find the duplicated samples, this works with the assumption that all the data has different TPMs
+            rm_samples = samples_to_remove(figure_data_df)
+            figure_data_df = figure_data_df[~figure_data_df["Sample"].isin(rm_samples)]
+
+            figure_data_df = figure_data_df.fillna("N/A")
+            figure_data_df[["TPM", "subset_name", "Sample", "Dataset"]].to_csv(filepath)
             ret_string = "Data saved to {}".format(filepath)
         return ret_string
-        
+                
 def init_dashboard(server):
     """Create a Plotly Dash dashboard."""
     external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
