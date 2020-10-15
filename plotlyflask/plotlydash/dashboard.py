@@ -187,8 +187,11 @@ def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter,
                         fig.add_trace(ter_fig.data[0])
 
             # if the maximum value for tpm is 25 change the tick
-            if processed_df["TPM"].values.max() <= 25 and xaxis_type == "linear":
-                fig.update_yaxes(range=[0, 25])
+            if xaxis_type == "linear":
+                if processed_df["TPM"].values.max() <= 25:
+                    fig.update_yaxes(range=[0, 25])
+                else:
+                    fig.update_yaxes(range=[0, processed_df["TPM"].values.max()])
 
             fig.update_layout(layout)
             return ret_str, fig, processed_df
@@ -202,7 +205,7 @@ def select_plot_type(df, config, plot_type):
     log = False
     if xaxis_type != "linear":
         log = True
-        df[df["TPM"] < 1] = 1.0
+        df.loc[df[df["TPM"] < 1].index.values]["TPM"] = 1.0
 
     if plot_type == "violin":
         ret_fig = px.violin(df, x=x, y=y, color=color, box=True, hover_data = hover_data, log_y=log)
@@ -393,7 +396,7 @@ def init_callbacks(dash_app, data_dict):
         if button_id == "export-plot":
             if figure["data"]:
                 fig = go.Figure(figure)
-                filepath = "{}plot-jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H:%M:%S'), ".pdf")
+                filepath = "{}plot-jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H-%M-%S'), ".pdf")
                 fig.write_image(filepath, width=width, height=height, scale=scale) 
                 ret_string = "Plot saved to {}".format(filepath)
         elif button_id == "export-data":
@@ -401,21 +404,18 @@ def init_callbacks(dash_app, data_dict):
             filepath = "{}data-jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H-%M-%S'), ".csv")
 
             # we need to remove the duplicated samples
-            # find the duplicated samples, this works with the assumption that all the data has different TPMs
-            # rm_samples = samples_to_remove(figure_data_df)
-            # figure_data_df = figure_data_df[~figure_data_df["Sample"].isin(rm_samples)]
-
             unique_subsets = figure_data_df["subset_name"].unique()
             export_df = pd.DataFrame()
             for subset_name in unique_subsets:
                 dummy_df = figure_data_df[figure_data_df["subset_name"] == subset_name]["TPM"].T
-                export_df = pd.concat([export_df, dummy_df], axis=1)
+                # we need to rename the series so that has a unique name, otherwise the below line won't work
+                export_df = pd.concat([export_df, dummy_df.rename(subset_name)], axis=1)
 
-            export_df.columns = [subset+"_TPM" for subset in unique_subsets]
             # we need to put the nan values at the bottom and to that we need to sort each column individualy and re-concat
             export_df = pd.concat([export_df[col].sort_values().reset_index(drop=True) for col in export_df], axis=1, ignore_index=True)
+            export_df.columns = [subset+"_TPM" for subset in unique_subsets] 
+
             export_df.to_csv(filepath, index=False)
-            # figure_data_df[["TPM", "subset_name", "Sample", "Dataset"]].to_csv(filepath)
             ret_string = "Data saved to {}".format(filepath)
         return ret_string
                 
