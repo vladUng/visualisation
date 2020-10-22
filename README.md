@@ -32,11 +32,12 @@ This is a tool that it is used by the JBU unit to visualise a gene's TPM's value
 
 # 3. Installation 
 
-1. Download the .tsv data from whereve it is stored (at the writting of this, was stored on Google Drive)
-2. Go to the root folder of the project and run the following `pip install -r requirements.tx`. This will install all the python dependencies 
-3. After everything is installed:
+1. Download the .tsv data from wherever it is stored (at the writting of this, was stored on Google Drive)
+2. Download the latest version of [Python 3.7](https://www.python.org/downloads/). This should also install *pip command* if not you'll need to download it and install it [oficial documentation](https://pip.pypa.io/en/stable/installing/).
+3. From the command prompt/terminal, go to the root folder of the project and run the following `pip install -r requirements.tx`. This will install all the python dependencies 
+4. After everything is installed:
    1. Linux/Mac: `python wsgi.py`
-   1. Windows: double click `wsgi.py`
+   2. Windows: double click `wsgi.py`
 
 ## 3.1. Adding a new dataset
 
