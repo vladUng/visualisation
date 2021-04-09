@@ -1,3 +1,4 @@
+from threading import BoundedSemaphore
 import numpy as np
 import pandas as pd
 import dash
@@ -198,6 +199,52 @@ def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter,
 
     return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}}, found_in 
 
+def create_multiple_gene_plot(found_in, metadata, selected_genes, datasets_selected, ter, plot_type, xaxis, xaxis_type):
+    if not found_in.empty:
+        ret_str = 'Gene {} was found'.format(selected_genes)
+
+        gene_A, gene_B = found_in["genes"].values[0], found_in["genes"].values[1]
+
+        # create the figure layout
+        layout = go.Layout (
+            title = " {} vs {} ".format(gene_A, gene_B),
+            height= 700
+        )
+        metadata_selected = filter_data(metadata, "Dataset", datasets_selected)
+
+        prcsd_df = found_in.iloc[0]
+        prcsd_df = prcsd_df.drop(["genes"]).T.reset_index()
+        prcsd_df.columns = ["Sample", "TPM"]
+        prcsd_df = sync_df(metadata_selected, prcsd_df)
+        prcsd_df.rename(columns={"TPM": gene_A}, inplace=True)
+        prcsd_df[gene_B] = found_in[prcsd_df["Sample"].values].iloc[1].values
+
+        hover_data = ["Sample", "Tissue", "Dataset","NHU_differentiation", "Gender", "TER", "Substrate"]
+
+        config={"x":gene_A, "y":gene_B, "color":"Dataset", "hover_data": hover_data, "xaxis_type": xaxis_type}
+        fig = select_plot_type(prcsd_df, config, plot_type)
+
+        fig.update_layout(layout)
+        # fig.update_yaxes(range=[-10, prcsd_df[gene_A].values.max() + 10])
+        fig.update_xaxes(range=[-10, prcsd_df[gene_B].values.max() + 10])
+
+        return ret_str, fig, prcsd_df
+        
+        # code that was gearing towards displaying multiple genes on the x axis
+        # metadata_selected = filter_data(metadata, "Dataset", datasets_selected)
+
+        # prcsd_df = pd.DataFrame()
+        # for _, row in found_in.iterrows():
+        #     dummy_row = row.drop(["genes"]).T.reset_index()
+        #     dummy_row.columns = ["Sample", "TPM"]
+        #     dummy_row = sync_df(metadata_selected, dummy_row)
+        #     dummy_row["gene"] = row.values[0]
+        #     prcsd_df = pd.concat([prcsd_df, dummy_row])
+
+       
+            
+    return "Gene {} not found in any of the datasets".format(selected_genes), { "data" : {}}, found_in 
+
 def select_plot_type(df, config, plot_type):
     x, y, color, hover_data, xaxis_type = config["x"], config["y"], config["color"], config["hover_data"], config["xaxis_type"]
     ret_fig = {}
@@ -252,8 +299,7 @@ def create_datasets_tick_box(data_dict):
             style = { "column-count": "2"}),
     ])
 
-#TODO: Rename this to create dataset panel
-def create_gene_search(data_dict):
+def create_dataset_panel(data_dict):
     # column names should be the same as the ones from the dataframe containing the gen
     return html.Div(id="gene-controls", children = [
                 create_datasets_tick_box(data_dict),
@@ -273,9 +319,9 @@ def create_gene_search(data_dict):
                 html.Br(),
             ])
 
-def metadata_menu(metadata_df):
+def metadata_menu():
     # we need to remove some non-numerical values
-    x_axis_options = ["NHU_differentiation", "Tissue", "Gender", "Diagnosis", "Substrate", "Dataset", "subset_name"]
+    x_axis_options = ["NHU_differentiation", "Tissue", "Gender", "Diagnosis", "Substrate", "Dataset", "subset_name", "Sample"]
     return html.Div(id="metadata-menu", style={"column-count":"1", "margin-top": "40%"},
      children=[
         html.H5("Figure Configuration"),
@@ -331,26 +377,76 @@ def init_callbacks(dash_app, data_dict):
     # latest fig to save
     @dash_app.callback(
          [Output('search-result', "children"), Output('dataset-plots', "figure"), Output('intermediate-value', 'children')],
-         [Input('plot-gene', 'n_clicks'),
-          Input("gene-input","n_submit")],
-         [State("gene-input", "value"),  State("data-checklist", "value"), State("ter-checklist","value"), State("xaxis-dropdown", "value"), State("select-plot-type","value"), State("select-xaxis-type","value") ]
+         Input('plot-gene', 'n_clicks'),
+         [State("genes-dropdown", "value"),  State("data-checklist", "value"), State("ter-checklist","value"), State("xaxis-dropdown", "value"), State("select-plot-type","value"), State("select-xaxis-type","value") ]
     )
-    def button_router(btn_1, n_submit, user_input, datasets_selected, ter, xaxis, plot_type, xaxis_type):
+    def button_router(btn_1, user_input, datasets_selected, ter, xaxis, plot_type, xaxis_type):
 
         ret_data = pd.DataFrame().to_json(date_format='iso', orient='split') 
-        prcsd_str = user_input.strip()
-        if prcsd_str:
+        if len(user_input):
             all_tsv, metadata = data_dict["all_tsv"], data_dict["metadata"]
-            # search for the gene
-            found_in = all_tsv[all_tsv["genes"].str.fullmatch("\\b"+prcsd_str+"\\b", case = False, na=False)]
-            # create the figure
-            ret_string, last_fig, prcsd_data = create_datasets_plot(found_in, metadata, prcsd_str, datasets_selected, ter, plot_type, xaxis, xaxis_type)
-            # transformed the filtered data to json
-            ret_data = prcsd_data.to_json(date_format='iso', orient='split')
+            if len(user_input) == 1:
+                gene = user_input[0].strip()
+                # search for the gene
+                found_in = all_tsv[all_tsv["genes"].str.fullmatch("\\b"+gene+"\\b", case = False, na=False)]
+                # create the figure
+                ret_string, last_fig, prcsd_data = create_datasets_plot(found_in, metadata, gene, datasets_selected, ter, plot_type, xaxis, xaxis_type)
+                # transformed the filtered data to json
+                ret_data = prcsd_data.to_json(date_format='iso', orient='split')
+            else:
+                if len(datasets_selected) == 1:
+                    # we have multiples genes to look for
+                    # genes = [gene.strip() for gene in user_input]
+                    selected_genes = "|".join(["({})".format(gene.strip()) for gene in user_input])
+                    found_in = all_tsv[all_tsv["genes"].str.fullmatch("\\b"+selected_genes+"\\b", case = False, na=False)]
 
+                    # create the figure
+                    ret_string, last_fig, prcsd_data = create_multiple_gene_plot(found_in, metadata, user_input, datasets_selected, ter, plot_type, "genes", xaxis_type)
+
+                    ret_data = prcsd_data.to_json(date_format='iso', orient='split')
+                else:
+                    return "Please select *only* one dataset", { "data" : {} }, ret_data
+                 
             return ret_string, last_fig, ret_data
         return "Search for gene and click submit", { "data" : {} }, ret_data
 
+    @dash_app.callback(
+        [ Output('genes-dropdown', 'options'), Output('genes-dropdown', 'value'), 
+          Output('display-selected-values', 'children') ],
+        [Input("gene-btn", 'n_clicks'), Input("gene-input","n_submit")],
+        [State("gene-input", "value"), State("genes-dropdown", "options"), State("genes-dropdown", "value")]
+    )
+    def update_gene_dropdown(btn, n_submit, new_gene, genes_options, selected_genes):
+        retMessage = ""
+        if new_gene != '':
+            all_tsv, metadata = data_dict["all_tsv"], data_dict["metadata"]
+            found_in = all_tsv[all_tsv["genes"].str.fullmatch("\\b"+new_gene+"\\b", case = False, na=False)]
+
+            if not found_in.empty:
+                # check if duplicated
+                geneExists = False
+                for option in genes_options:
+                    if new_gene in option.values():
+                        geneExists = True
+                        break
+                
+                if not geneExists:
+                    genes_options.append( {"label": new_gene, "value": new_gene } )
+                    retMessage = "Added gene {}".format(new_gene)
+
+                    if len(selected_genes) > 1:
+                        retMessage = "You can only select 2 genes, please remove one."
+                    else:
+                        selected_genes.append(new_gene)
+                else:     
+                    if len(selected_genes) < 2:     
+                        selected_genes.append(new_gene)      
+                    retMessage = "Gene {} is already in the options".format(new_gene)
+            else:
+                retMessage = "We couldn't find the gene {} in the selected dataset".format(new_gene)
+
+        return genes_options, selected_genes, retMessage
+        
     @dash_app.callback(
         Output("data-checklist", "value"),
         [Input("select-all-none", "value")],
@@ -439,13 +535,26 @@ def init_dashboard(server):
             html.Div(id="gene-search", children=[
                 html.H5("Enter the gene you want to analyse"),
                 html.Div(["Gene name: ",
-                    dcc.Input(id='gene-input', value="", type='text')]),
+                    dcc.Input(id='gene-input', value="", type='text'),
+                    # dcc.Dropdown(id="gene-terms", options=[ ], value=[], multi=True),
+                    html.Button(id='gene-btn', n_clicks=0, children='Add gene'),
+                    html.Hr(),
+                    html.Div([
+                            dcc.Dropdown(
+                                id='genes-dropdown',
+                                options=[] , value=[], multi=True,
+                            )], 
+                            style={'width': '20%', 'display': 'inline-block'}
+                            ),
+                        html.Hr(),
+                        html.Div(id='display-selected-values')
+                    ]),
                 html.Br(),
             ]),
             html.Div(id="parent-controllers", style = { "column-count": "2", "width":"fit-content"}, 
             children=[
-                create_gene_search(data_dict), 
-                metadata_menu(data_dict["metadata"]),
+                create_dataset_panel(data_dict), 
+                metadata_menu(),
             ]),
             dcc.Graph(
                 id='dataset-plots',
@@ -457,4 +566,3 @@ def init_dashboard(server):
         ]),
     ])
     return dash_app.server
-
