@@ -2,6 +2,7 @@ from threading import BoundedSemaphore
 import numpy as np
 import pandas as pd
 import dash
+from dash_table import DataTable
 import dash_html_components as html
 import dash_core_components as dcc
 from dash.dependencies import Input, Output, State
@@ -26,7 +27,7 @@ def import_data(base_path):
     if path.exists(base_path):
         ret_dict = {}
         ret_dict["all_tsv"] = pd.read_csv(base_path + "all_data.tsv", delimiter="\t")
-        raw_df = pd.read_csv(base_path + "00_JBU_sequencing_metadata.tsv", delimiter="\t")
+        raw_df = pd.read_csv(base_path + "metadata_v3.tsv", delimiter="\t")
         # we need to do some pre-processing to duplicate the data _incl for fields
         ret_dict["metadata"], ret_dict["all_tsv"] = process_data(raw_df, ret_dict["all_tsv"])
         print("Finished loading the data in {}".format(time.time()-start_time))
@@ -192,16 +193,17 @@ def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter,
                 if processed_df["TPM"].values.max() <= 25:
                     fig.update_yaxes(range=[0, 25])
                 else:
-                    fig.update_yaxes(range=[0, processed_df["TPM"].values.max()])
+                    offset_y = processed_df["TPM"].values.max() * 0.015
+                    fig.update_yaxes(range=[-offset_y, processed_df["TPM"].values.max() + offset_y])
 
             fig.update_layout(layout)
             return ret_str, fig, processed_df
 
     return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}}, found_in 
 
-def create_multiple_gene_plot(found_in, metadata, selected_genes, datasets_selected, ter, plot_type, xaxis, xaxis_type):
+def compare_genes(found_in, metadata, selected_genes, datasets_selected, ter, plot_type, xaxis, xaxis_type):
     if not found_in.empty:
-        ret_str = 'Gene {} was found'.format(selected_genes)
+        ret_str = 'Genes {} were found'.format(selected_genes)
 
         gene_A, gene_B = found_in["genes"].values[0], found_in["genes"].values[1]
 
@@ -225,25 +227,15 @@ def create_multiple_gene_plot(found_in, metadata, selected_genes, datasets_selec
         fig = select_plot_type(prcsd_df, config, plot_type)
 
         fig.update_layout(layout)
-        # fig.update_yaxes(range=[-10, prcsd_df[gene_A].values.max() + 10])
-        fig.update_xaxes(range=[-10, prcsd_df[gene_B].values.max() + 10])
+
+        offset_x = prcsd_df[gene_A].values.max() * 0.015
+        offset_y = prcsd_df[gene_B].values.max() * 0.015
+        fig.update_xaxes(range=[-offset_x, prcsd_df[gene_A].values.max() + offset_x])
+        fig.update_yaxes(range=[-offset_y, prcsd_df[gene_B].values.max() + offset_y])
 
         return ret_str, fig, prcsd_df
         
-        # code that was gearing towards displaying multiple genes on the x axis
-        # metadata_selected = filter_data(metadata, "Dataset", datasets_selected)
-
-        # prcsd_df = pd.DataFrame()
-        # for _, row in found_in.iterrows():
-        #     dummy_row = row.drop(["genes"]).T.reset_index()
-        #     dummy_row.columns = ["Sample", "TPM"]
-        #     dummy_row = sync_df(metadata_selected, dummy_row)
-        #     dummy_row["gene"] = row.values[0]
-        #     prcsd_df = pd.concat([prcsd_df, dummy_row])
-
-       
-            
-    return "Gene {} not found in any of the datasets".format(selected_genes), { "data" : {}}, found_in 
+    return "Genes {} were not found in any of the datasets".format(selected_genes), { "data" : {}}, found_in 
 
 def select_plot_type(df, config, plot_type):
     x, y, color, hover_data, xaxis_type = config["x"], config["y"], config["color"], config["hover_data"], config["xaxis_type"]
@@ -319,6 +311,27 @@ def create_dataset_panel(data_dict):
                 html.Br(),
             ])
 
+def create_gene_search():
+    return  html.Div(id="gene-search", children=[
+        html.H6("Enter the gene you want to analyse"),
+        html.Hr(),
+        html.Div(["Gene name: ",
+            dcc.Input(id='gene-input', value="", type='text'),
+            html.Button(id='gene-btn', n_clicks=0, children='Add gene'),
+            html.Hr(),
+            html.Div(
+                [   html.Label(["Selected gene(s)",
+                    dcc.Dropdown(
+                    id='genes-dropdown',
+                    options=[] , value=[], multi=True ) ])
+                ], 
+                style={'width': '20%', 'display': 'inline-block'} ),
+            html.Hr(),
+            html.Div(id='display-selected-values')
+            ]),
+        html.Br(),
+    ])
+
 def metadata_menu():
     # we need to remove some non-numerical values
     x_axis_options = ["NHU_differentiation", "Tissue", "Gender", "Diagnosis", "Substrate", "Dataset", "subset_name", "Sample"]
@@ -376,7 +389,9 @@ def export_panel():
 def init_callbacks(dash_app, data_dict):
     # latest fig to save
     @dash_app.callback(
-         [Output('search-result', "children"), Output('dataset-plots', "figure"), Output('intermediate-value', 'children')],
+         [Output('search-result', "children"), Output('dataset-plots', "figure"), Output('intermediate-value', 'children'),
+          Output('pearson-table', 'columns'), Output('pearson-table', 'data'),
+          Output('spearman-table', 'columns'), Output('spearman-table', 'data') ],
          Input('plot-gene', 'n_clicks'),
          [State("genes-dropdown", "value"),  State("data-checklist", "value"), State("ter-checklist","value"), State("xaxis-dropdown", "value"), State("select-plot-type","value"), State("select-xaxis-type","value") ]
     )
@@ -393,6 +408,8 @@ def init_callbacks(dash_app, data_dict):
                 ret_string, last_fig, prcsd_data = create_datasets_plot(found_in, metadata, gene, datasets_selected, ter, plot_type, xaxis, xaxis_type)
                 # transformed the filtered data to json
                 ret_data = prcsd_data.to_json(date_format='iso', orient='split')
+
+                return ret_string, last_fig, ret_data, [], [], [], []
             else:
                 if len(datasets_selected) == 1:
                     # we have multiples genes to look for
@@ -401,14 +418,34 @@ def init_callbacks(dash_app, data_dict):
                     found_in = all_tsv[all_tsv["genes"].str.fullmatch("\\b"+selected_genes+"\\b", case = False, na=False)]
 
                     # create the figure
-                    ret_string, last_fig, prcsd_data = create_multiple_gene_plot(found_in, metadata, user_input, datasets_selected, ter, plot_type, "genes", xaxis_type)
+                    ret_string, last_fig, prcsd_data = compare_genes(found_in, metadata, user_input, datasets_selected, ter, plot_type, "genes", xaxis_type)
+
+                    corelation_cols, pearson_data, spearman_data = [], [], []
+                    gene_A, gene_B = found_in["genes"].values[0], found_in["genes"].values[1]
+
+
+                    dummy_df = found_in.drop("genes", axis=1).transpose()
+                    dummy_df.columns = found_in["genes"].values
+                    pearson_df = dummy_df.corr(method="pearson").round(6)
+                    spearman_df = dummy_df.corr(method="spearman").round(6)
+
+                    corelation_cols = [ { "id": "gene_name", "name": "gene"},
+                                        { "id": "gene_a", "name": gene_A},
+                                        { "id": "gene_b", "name": gene_B} ]
+
+                    for idx, row in pearson_df.iterrows():
+                        pearson_data.append(
+                            { "gene_name": idx, "gene_a": row[gene_A], "gene_b": row[gene_B] })
+                    for idx, row in spearman_df.iterrows():
+                        spearman_data.append(
+                            { "gene_name": idx, "gene_a": row[gene_A], "gene_b": row[gene_B] })
 
                     ret_data = prcsd_data.to_json(date_format='iso', orient='split')
+                    return ret_string, last_fig, ret_data, corelation_cols, pearson_data, corelation_cols, spearman_data
                 else:
-                    return "Please select *only* one dataset", { "data" : {} }, ret_data
+                    return "Please select *only* one dataset", { "data" : {} }, ret_data, [], [], [], []
                  
-            return ret_string, last_fig, ret_data
-        return "Search for gene and click submit", { "data" : {} }, ret_data
+        return "Search for gene and click submit", { "data" : {} }, ret_data, [], [], [], []
 
     @dash_app.callback(
         [ Output('genes-dropdown', 'options'), Output('genes-dropdown', 'value'), 
@@ -532,25 +569,7 @@ def init_dashboard(server):
     dash_app.layout = html.Div(children=[
         html.H1(children='JBU visualisation tool'),
         html.Div(id="parrent-all", children=[
-            html.Div(id="gene-search", children=[
-                html.H5("Enter the gene you want to analyse"),
-                html.Div(["Gene name: ",
-                    dcc.Input(id='gene-input', value="", type='text'),
-                    # dcc.Dropdown(id="gene-terms", options=[ ], value=[], multi=True),
-                    html.Button(id='gene-btn', n_clicks=0, children='Add gene'),
-                    html.Hr(),
-                    html.Div([
-                            dcc.Dropdown(
-                                id='genes-dropdown',
-                                options=[] , value=[], multi=True,
-                            )], 
-                            style={'width': '20%', 'display': 'inline-block'}
-                            ),
-                        html.Hr(),
-                        html.Div(id='display-selected-values')
-                    ]),
-                html.Br(),
-            ]),
+            create_gene_search(),
             html.Div(id="parent-controllers", style = { "column-count": "2", "width":"fit-content"}, 
             children=[
                 create_dataset_panel(data_dict), 
@@ -561,6 +580,12 @@ def init_dashboard(server):
                 figure = { "data" : {},
                 "layout": { "title": "No Gene Search", "height": 300 }
                 }),
+            html.Div([
+                html.H5("Pearson correlation"),
+                DataTable( id = "pearson-table", columns= [], data = [] ),
+                html.H5("Spearman correlation"),
+                DataTable( id = "spearman-table",  columns = [], data = []) ],
+                style={'width': 'fit-content', "column-count": "2"}),
             export_panel(),
             html.Div(id='intermediate-value', style={'display': 'none'}) #used to store data between callbacks
         ]),
