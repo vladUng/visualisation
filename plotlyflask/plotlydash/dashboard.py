@@ -85,7 +85,7 @@ def process_data(df_metadata, all_tsv):
     #cols to replace nan with NA string
     cols = ["NHU_differentiation", "Tissue", "Gender", "Diagnosis", "Substrate"]
     for col in cols:
-        df_metadata[col] = df_metadata[col].fillna("Not-known")
+        df_metadata[col] = df_metadata[col].fillna("Not-applicable")
 
     #add the incl columns to the datasets and duplicate the samples
     incl_cols = [col for col in df_metadata.columns if "incl_" in col]
@@ -152,6 +152,28 @@ def samples_to_remove(df):
     # but we need to check if these are the duplicates of the _incl (maybe in the future there will be samples that have the exact TPM value)
     ret_samples = [sample for sample in duplicated_samples if "_incl_" in sample]
     return ret_samples
+
+def compute_correlations(df, gene_A,  gene_B, isLog=False):
+    spearman_df = df.corr(method="spearman").round(6)
+    pearson_df = df.corr(method="pearson").round(6)
+
+    pearson_data, spearman_data = [], []
+
+    for idx, row in pearson_df.iterrows():
+        if isLog:
+            pearson_data.append({"corr_metric": "Log10({} + 1)".format(idx),  
+                                 "gene_a": row[gene_A], "gene_b": row[gene_B]})
+        else:
+            pearson_data.append({ "corr_metric": idx, "gene_a": row[gene_A], "gene_b": row[gene_B] })
+        
+    for idx, row in spearman_df.iterrows():
+        if isLog:
+            spearman_data.append({"corr_metric": "Log10({} + 1)".format(idx),  
+                                 "gene_a": row[gene_A], "gene_b": row[gene_B]})
+        else: 
+            spearman_data.append({ "corr_metric": idx, "gene_a": row[gene_A], "gene_b": row[gene_B] })
+
+    return pearson_data, spearman_data
 
 ##### Plotting functions #####
 def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter, plot_type, xaxis, xaxis_type):
@@ -420,25 +442,24 @@ def init_callbacks(dash_app, data_dict):
                     # create the figure
                     ret_string, last_fig, prcsd_data = compare_genes(found_in, metadata, user_input, datasets_selected, ter, plot_type, "genes", xaxis_type)
 
-                    corelation_cols, pearson_data, spearman_data = [], [], []
+                    # normal
                     gene_A, gene_B = found_in["genes"].values[0], found_in["genes"].values[1]
-
-
                     dummy_df = found_in.drop("genes", axis=1).transpose()
                     dummy_df.columns = found_in["genes"].values
-                    pearson_df = dummy_df.corr(method="pearson").round(6)
-                    spearman_df = dummy_df.corr(method="spearman").round(6)
+                    pearson_data, spearman_data = compute_correlations(dummy_df, gene_A, gene_B)
 
-                    corelation_cols = [ { "id": "gene_name", "name": "gene"},
+                    # for log10
+                    dummy_df = pd.DataFrame()
+                    dummy_df[found_in["genes"].values[0]] = np.log10(list(found_in.iloc[0, 1:].values + 1))
+                    dummy_df[found_in["genes"].values[1]] =  np.log10(list(found_in.iloc[1, 1:].values + 1))
+                    pearson_data_log, spearman_data_log = compute_correlations(dummy_df, gene_A, gene_B, isLog=True)
+
+                    pearson_data.extend(pearson_data_log)
+                    spearman_data.extend(spearman_data_log)
+
+                    corelation_cols = [ { "id": "corr_metric", "name": "Correlation Coefficient"},
                                         { "id": "gene_a", "name": gene_A},
                                         { "id": "gene_b", "name": gene_B} ]
-
-                    for idx, row in pearson_df.iterrows():
-                        pearson_data.append(
-                            { "gene_name": idx, "gene_a": row[gene_A], "gene_b": row[gene_B] })
-                    for idx, row in spearman_df.iterrows():
-                        spearman_data.append(
-                            { "gene_name": idx, "gene_a": row[gene_A], "gene_b": row[gene_B] })
 
                     ret_data = prcsd_data.to_json(date_format='iso', orient='split')
                     return ret_string, last_fig, ret_data, corelation_cols, pearson_data, corelation_cols, spearman_data
@@ -509,9 +530,9 @@ def init_callbacks(dash_app, data_dict):
     @dash_app.callback(
         Output("output-export-csv", 'children'),
         [Input("export-plot", "n_clicks"), Input("export-data", "n_clicks"), Input('intermediate-value', 'children')],
-        [State("plot-width", "value"), State("plot-height", "value"), State("plot-scale", "value"), State("dataset-plots", "figure"), State("data-checklist", "value")]
+        [State("genes-dropdown", "value"), State("plot-width", "value"), State("plot-height", "value"), State("plot-scale", "value"), State("dataset-plots", "figure"), State("data-checklist", "value")]
     )
-    def export_plot(btn_1, btn_2, data_json, width, height, scale, figure, datasets):
+    def export_plot(btn_1, btn_2,  data_json, user_input, width, height, scale, figure, datasets):
         # checking os
         if name == 'nt':
             path =  "exported_data\\"
@@ -533,23 +554,36 @@ def init_callbacks(dash_app, data_dict):
                 fig.write_image(filepath, width=width, height=height, scale=scale) 
                 ret_string = "Plot saved to {}".format(filepath)
         elif button_id == "export-data":
-            figure_data_df = pd.read_json(data_json, orient='split')
-            filepath = "{}data-jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H-%M-%S'), ".csv")
 
-            # we need to remove the duplicated samples
-            unique_subsets = figure_data_df["subset_name"].unique()
-            export_df = pd.DataFrame()
-            for subset_name in unique_subsets:
-                dummy_df = figure_data_df[figure_data_df["subset_name"] == subset_name]["TPM"].T
-                # we need to rename the series so that has a unique name, otherwise the below line won't work
-                export_df = pd.concat([export_df, dummy_df.rename(subset_name)], axis=1)
+            if len(user_input) == 1:
+                figure_data_df = pd.read_json(data_json, orient='split')
+                filepath = "{}data-jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H-%M-%S'), ".csv")
 
-            # we need to put the nan values at the bottom and to that we need to sort each column individualy and re-concat
-            export_df = pd.concat([export_df[col].sort_values().reset_index(drop=True) for col in export_df], axis=1, ignore_index=True)
-            export_df.columns = [subset+"_TPM" for subset in unique_subsets] 
+                # we need to remove the duplicated samples
+                unique_subsets = figure_data_df["subset_name"].unique()
+                export_df = pd.DataFrame()
+                for subset_name in unique_subsets:
+                    dummy_df = figure_data_df[figure_data_df["subset_name"] == subset_name]["TPM"].T
+                    # we need to rename the series so that has a unique name, otherwise the below line won't work
+                    export_df = pd.concat([export_df, dummy_df.rename(subset_name)], axis=1)
 
-            export_df.to_csv(filepath, index=False)
-            ret_string = "Data saved to {}".format(filepath)
+                # we need to put the nan values at the bottom and to that we need to sort each column individualy and re-concat
+                export_df = pd.concat([export_df[col].sort_values().reset_index(drop=True) for col in export_df], axis=1, ignore_index=True)
+                export_df.columns = [subset+"_TPM" for subset in unique_subsets] 
+
+                export_df.to_csv(filepath, index=False)
+                ret_string = "Data saved to {}".format(filepath)
+
+            else: 
+                figure_data_df = pd.read_json(data_json, orient='split')
+                filepath = "{}data-jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H-%M-%S'), ".csv")
+
+                # sample, subset_name and the two genes (last ones)
+                selected_cols = np.append(figure_data_df.columns[-2:].values, figure_data_df.columns[:2])
+                # we need to remove the duplicated samples
+                figure_data_df[selected_cols].to_csv(filepath, index=False)
+                ret_string = "Data saved to {}".format(filepath)
+
         return ret_string
                 
 def init_dashboard(server):
