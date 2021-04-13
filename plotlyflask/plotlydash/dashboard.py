@@ -1,4 +1,5 @@
 from threading import BoundedSemaphore
+from dash_html_components.Hr import Hr
 import numpy as np
 import pandas as pd
 import dash
@@ -72,7 +73,7 @@ def update_all_datasets(base_path):
 
 def process_data(df_metadata, all_tsv):
     """ Process the metadata and the all_tsv file. The are two main operations happening:
-    1. Replaing in specified cols the nan values and "?" with Not-known
+    1. Replacing in specified cols the nan values and "?" with Not-known
     2. Fakes the _incl columns with values of "Y" to be as datasets. This involved to duplicate both the samples in metadata and in the `all_data.tsv`. We've marked the samples that are duplicated by the following rule "_incl_" + "including column initials". 
     Args:
         df_metadata ([DataFrame]): The medata
@@ -85,7 +86,7 @@ def process_data(df_metadata, all_tsv):
     #cols to replace nan with NA string
     cols = ["NHU_differentiation", "Tissue", "Gender", "Diagnosis", "Substrate"]
     for col in cols:
-        df_metadata[col] = df_metadata[col].fillna("Not-applicable")
+        df_metadata[col] = df_metadata[col].fillna("NA")
 
     #add the incl columns to the datasets and duplicate the samples
     incl_cols = [col for col in df_metadata.columns if "incl_" in col]
@@ -193,24 +194,16 @@ def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter,
         metadata_selected = filter_data(metadata, "Dataset", datasets_selected)
         processed_df = sync_df(metadata_selected, found_in)
 
-        hover_data = ["Sample",  "shared_num_same_col", "Tissue", "Dataset","NHU_differentiation", "Gender", "TER", "Substrate"]
+        hover_data = ["Sample",  "Dataset", "subset_name", "shared_num_same_col", "Tissue", "NHU_differentiation", "Gender", "TER", "Substrate"]
         if not processed_df.empty:
             if not datasets_selected:
                 return "Select a dataset first", { "data" : {}}, found_in
 
+            config={"x":xaxis , "y":"TPM", "color":"Dataset", "hover_data": hover_data, "xaxis_type": xaxis_type,}
+
             # create the main trace
-            
-            config={"x":xaxis , "y":"TPM", "color":"Dataset", "hover_data": hover_data, "xaxis_type": xaxis_type}
-            fig = select_plot_type(processed_df, config, plot_type)
+            fig = select_plot_type(processed_df, config, plot_type, isComparison=False, ter=ter)
 
-            # # add the ter symbols if needed 
-            # if ter != None and "tight" in ter:
-            #     ter_figs = change_symbol_ter(processed_df, config, plot_type)
-            #     if ter_figs is not None:
-            #         for ter_fig in ter_figs:
-            #             fig.add_trace(ter_fig.data[0])
-
-            # if the maximum value for tpm is 25 change the tick
             if xaxis_type == "linear":
                 if processed_df["TPM"].values.max() <= 25:
                     fig.update_yaxes(range=[0, 25])
@@ -223,7 +216,7 @@ def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter,
 
     return "Gene {} not found in any of the datasets".format(user_input), { "data" : {}}, found_in 
 
-def compare_genes(found_in, metadata, selected_genes, datasets_selected, ter, plot_type, xaxis, xaxis_type):
+def compare_genes(found_in, metadata, selected_genes, datasets_selected, plot_type, xaxis_type):
     if not found_in.empty:
         ret_str = 'Genes {} were found'.format(selected_genes)
 
@@ -246,7 +239,7 @@ def compare_genes(found_in, metadata, selected_genes, datasets_selected, ter, pl
         hover_data = ["Sample", "Tissue", "Dataset", "subset_name", "NHU_differentiation", "Gender", "TER", "Substrate"]
 
         config={"x":gene_A, "y":gene_B, "color":"Dataset", "hover_data": hover_data, "xaxis_type": xaxis_type}
-        fig = select_plot_type(prcsd_df, config, plot_type, True)
+        fig = select_plot_type(prcsd_df, config, plot_type, isComparison=True)
 
         fig.update_layout(layout)
 
@@ -265,9 +258,10 @@ def compare_genes(found_in, metadata, selected_genes, datasets_selected, ter, pl
         
     return "Genes {} were not found in any of the datasets".format(selected_genes), { "data" : {}}, found_in 
 
-def select_plot_type(df, config, plot_type, isComparison = False ):
+def select_plot_type(df, config, plot_type, isComparison = False, ter = None):
     x, y, color, hover_data, xaxis_type = config["x"], config["y"], config["color"], config["hover_data"], config["xaxis_type"]
     ret_fig = {}
+    categorical_order = []
 
     log = False
     if xaxis_type != "linear":
@@ -279,30 +273,37 @@ def select_plot_type(df, config, plot_type, isComparison = False ):
             df.loc[df[df[x] < 1].index.values][x] = 1.0
 
     if not isComparison:
+        # slightly modified the subtypes and duplicate the ones that have tight TER barrier
+        if ter != None and "tight" in ter:
+            tight_limit = 500
+            ter_col = []
+            for _, row in df.iterrows():
+                tight_name = ""
+                if float(row["TER"]) >= tight_limit:
+                    tight_name = row[x]+"_tight"
+                    ter_col.append(tight_name)
+                else:
+                    ter_col.append(row[x])
+
+                if tight_name not in categorical_order and tight_name != "":
+                    categorical_order.extend([tight_name, row[x]])
+
+            df[x] = ter_col
+            color = x 
+        
+        # do the plot
         if plot_type == "violin" :
             ret_fig = px.violin(df, x=x, y=y, color=color, box=True, hover_data = hover_data, log_y=log)
         elif plot_type == "violin_points":
             ret_fig = px.violin(df, x=x, y=y, color=color, box=True,  points="all", hover_data = hover_data, log_y=log)
         elif plot_type == "box":
-            ret_fig = px.box(df, x=x, y=y, color=color, hover_data = hover_data, log_y=log)
+            ret_fig = px.box(df, x=x, y=y, color=color, hover_data = hover_data, log_y=log, category_orders={x: categorical_order})
             ret_fig.update_traces(boxmean="sd")
         elif plot_type == "box_points":
-            ret_fig = px.box(df, x=x, y=y, color=color, points="all", hover_data = hover_data, log_y=log)
-            ret_fig.update_traces(boxmean="sd")
-        else:
-            # just create a faux x component for the ter case
-            ter_df = df[df["TER"].astype(np.float16) >= 500]
-
-            ter_col = []
-            for _, row in df.iterrows():
-                if (float(row["TER"]) >= 500):
-                    ter_col.append("tight")
-                else:
-                    ter_col.append("normal")
-
-            df["TER_label"] = ter_col
-            # duplicate the x axis
-            ret_fig = px.strip(df, x=x, y=y, color=color, hover_data = hover_data, log_y=log, facet_col = "TER_label")       
+            ret_fig = px.box(df, x=x, y=y, color=color, points="all", hover_data = hover_data, log_y=log,  category_orders={x: categorical_order})
+            ret_fig.update_traces(boxmean="sd")   
+        else: 
+            ret_fig = px.strip(df, x=x, y=y, color=color, hover_data = hover_data, log_y=log, category_orders={x: categorical_order})
     else:
         ret_fig = px.strip(df, x=x, y=y, color=color, hover_data = hover_data, log_y=log, log_x=log)
             
@@ -437,8 +438,7 @@ def init_callbacks(dash_app, data_dict):
     # latest fig to save
     @dash_app.callback(
          [Output('search-result', "children"), Output('dataset-plots', "figure"), Output('intermediate-value', 'children'),
-          Output('pearson-table', 'columns'), Output('pearson-table', 'data'),
-          Output('spearman-table', 'columns'), Output('spearman-table', 'data') ],
+            Output('pearson-table', 'columns'), Output('pearson-table', 'data')],
          Input('plot-gene', 'n_clicks'),
          [State("genes-dropdown", "value"),  State("data-checklist", "value"), State("ter-checklist","value"), State("xaxis-dropdown", "value"), State("select-plot-type","value"), State("select-xaxis-type","value") ]
     )
@@ -456,39 +456,41 @@ def init_callbacks(dash_app, data_dict):
                 # transformed the filtered data to json
                 ret_data = prcsd_data.to_json(date_format='iso', orient='split')
 
-                return ret_string, last_fig, ret_data, [], [], [], []
+                return ret_string, last_fig, ret_data, [], []
             else:
                 # we have multiples genes to look for
-                # genes = [gene.strip() for gene in user_input]
                 selected_genes = "|".join(["({})".format(gene.strip()) for gene in user_input])
                 found_in = all_tsv[all_tsv["genes"].str.fullmatch("\\b"+selected_genes+"\\b", case = False, na=False)]
 
                 # create the figure
-                ret_string, last_fig, prcsd_data = compare_genes(found_in, metadata, user_input, datasets_selected, ter, plot_type, "genes", xaxis_type)
+                ret_string, last_fig, prcsd_data = compare_genes(found_in, metadata, user_input, datasets_selected, plot_type, xaxis_type)
 
                 # normal
                 gene_A, gene_B = found_in["genes"].values[0], found_in["genes"].values[1]
                 dummy_df = found_in.drop("genes", axis=1).transpose()
                 dummy_df.columns = found_in["genes"].values
-                pearson_data, spearman_data = compute_correlations(dummy_df, gene_A, gene_B)
+                pearson_corr, spearman_corr = compute_correlations(dummy_df, gene_A, gene_B)
 
                 # for log10
                 dummy_df = pd.DataFrame()
                 dummy_df[found_in["genes"].values[0]] = np.log10(list(found_in.iloc[0, 1:].values + 1))
                 dummy_df[found_in["genes"].values[1]] =  np.log10(list(found_in.iloc[1, 1:].values + 1))
-                pearson_data_log, spearman_data_log = compute_correlations(dummy_df, gene_A, gene_B, isLog=True)
-
-                pearson_data.extend(pearson_data_log)
-                spearman_data.extend(spearman_data_log)
+                # we don't need to calculate for spearman, but it's easier to the function
+                pearson_corr_log, _ = compute_correlations(dummy_df, gene_A, gene_B, isLog=True) 
 
                 corelation_cols = [ { "id": "corr_metric", "name": "Correlation Coefficient"},
-                                    { "id": "gene_a", "name": gene_A},
-                                    { "id": "gene_b", "name": gene_B} ]
+                                    { "id": "value", "name": "{} vs {}".format(gene_A, gene_B) } ]
+
+                table_data = [ 
+                    {"corr_metric": "Pearson Correlation", "value": pearson_corr[0]["gene_b"] },
+                    {"corr_metric": "Pearson Correlation log10(TPM+1)", "value": pearson_corr_log[0]["gene_b"] },
+                    { "corr_metric": "Spearman Correlation", "value": spearman_corr[0]["gene_b"] }
+                ]
 
                 ret_data = prcsd_data.to_json(date_format='iso', orient='split')
-                return ret_string, last_fig, ret_data, corelation_cols, pearson_data, corelation_cols, spearman_data
+                return ret_string, last_fig, ret_data, corelation_cols, table_data
     
-        return "Search for gene and click submit", { "data" : {} }, ret_data, [], [], [], []
+        return "Search for gene and click submit", { "data" : {} }, ret_data, [], []
 
     @dash_app.callback(
         [ Output('genes-dropdown', 'options'), Output('genes-dropdown', 'value'), 
@@ -519,7 +521,7 @@ def init_callbacks(dash_app, data_dict):
                     else:
                         selected_genes.append(new_gene)
                 else:     
-                    if len(selected_genes) < 2:     
+                    if len(selected_genes) < 2 and not geneExists:     
                         selected_genes.append(new_gene)      
                     retMessage = "Gene {} is already in the options".format(new_gene)
             else:
@@ -576,11 +578,10 @@ def init_callbacks(dash_app, data_dict):
                 fig.write_image(filepath, width=width, height=height, scale=scale) 
                 ret_string = "Plot saved to {}".format(filepath)
         elif button_id == "export-data":
-
             if len(user_input) == 1:
                 figure_data_df = pd.read_json(data_json, orient='split')
                 filepath = "{}data-jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H-%M-%S'), ".csv")
-
+                filepath_all = "{}all-data-jbu-viz-{}{}".format(path, datetime.now().strftime('%d-%m-%Y--%H-%M-%S'), ".csv")
                 # we need to remove the duplicated samples
                 unique_subsets = figure_data_df["subset_name"].unique()
                 export_df = pd.DataFrame()
@@ -594,7 +595,25 @@ def init_callbacks(dash_app, data_dict):
                 export_df.columns = [subset+"_TPM" for subset in unique_subsets] 
 
                 export_df.to_csv(filepath, index=False)
-                ret_string = "Data saved to {}".format(filepath)
+                all_data = figure_data_df[figure_data_df["subset_name"].isin(unique_subsets)]
+                all_data = all_data.dropna(axis=1, how = 'all')
+
+                #remove _incl from samples and datasets
+                samples = []
+                for _, row in all_data.iterrows():
+                    sample = row["Sample"]
+                    if "incl_" in sample:
+                        samples.append("-".join(sample.split("_")[:-2]))
+                    else:
+                        samples.append(sample)
+                    
+                all_data["Sample"] = samples
+
+                tpm_col = all_data.pop("TPM")
+                all_data.insert(1, "TPM", tpm_col)
+                all_data.to_csv(filepath_all, index=False)
+
+                ret_string = "Data saved to {} and with the metadata to: {}".format(filepath, filepath_all)
 
             else: 
                 figure_data_df = pd.read_json(data_json, orient='split')
@@ -637,11 +656,15 @@ def init_dashboard(server):
                 "layout": { "title": "No Gene Search", "height": 300 }
                 }),
             html.Div([
-                html.H5("Pearson correlation"),
-                DataTable( id = "pearson-table", columns= [], data = [] ),
-                html.H5("Spearman correlation"),
-                DataTable( id = "spearman-table",  columns = [], data = []) ],
-                style={'width': 'fit-content', "column-count": "2"}),
+                html.H5("Correlations Table"),
+                html.Hr(),
+                DataTable( id = "pearson-table", columns= [], data = [],
+                    style_table={"width": "30%" },
+                    style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold' },
+                    style_cell={'textAlign': 'left'}) ,
+                html.Hr(),
+                html.Div(["Note: Pearson (raw and log10 transformed) and Spearman correlation values computed here are for guidance only. Values will be inaccurate/inappropriate with major outliers. Pearson correlations will be incorrect when data is non-normally distributed - common with expression data, hence the log10(TPM+1) transformation. Spearman is a non-parametric test built on rank order, so will not be affected by log transformations. Data should be downloaded (button below) and inspected before presentation/interpretation."]),
+                html.Hr()]),
             export_panel(),
             html.Div(id='intermediate-value', style={'display': 'none'}) #used to store data between callbacks
         ]),
