@@ -203,12 +203,12 @@ def create_datasets_plot(found_in, metadata, user_input, datasets_selected, ter,
             config={"x":xaxis , "y":"TPM", "color":"Dataset", "hover_data": hover_data, "xaxis_type": xaxis_type}
             fig = select_plot_type(processed_df, config, plot_type)
 
-            # add the ter symbols if needed 
-            if ter != None and "tight" in ter:
-                ter_figs = change_symbol_ter(processed_df, config, plot_type)
-                if ter_figs is not None:
-                    for ter_fig in ter_figs:
-                        fig.add_trace(ter_fig.data[0])
+            # # add the ter symbols if needed 
+            # if ter != None and "tight" in ter:
+            #     ter_figs = change_symbol_ter(processed_df, config, plot_type)
+            #     if ter_figs is not None:
+            #         for ter_fig in ter_figs:
+            #             fig.add_trace(ter_fig.data[0])
 
             # if the maximum value for tpm is 25 change the tick
             if xaxis_type == "linear":
@@ -243,44 +243,69 @@ def compare_genes(found_in, metadata, selected_genes, datasets_selected, ter, pl
         prcsd_df.rename(columns={"TPM": gene_A}, inplace=True)
         prcsd_df[gene_B] = found_in[prcsd_df["Sample"].values].iloc[1].values
 
-        hover_data = ["Sample", "Tissue", "Dataset","NHU_differentiation", "Gender", "TER", "Substrate"]
+        hover_data = ["Sample", "Tissue", "Dataset", "subset_name", "NHU_differentiation", "Gender", "TER", "Substrate"]
 
         config={"x":gene_A, "y":gene_B, "color":"Dataset", "hover_data": hover_data, "xaxis_type": xaxis_type}
-        fig = select_plot_type(prcsd_df, config, plot_type)
+        fig = select_plot_type(prcsd_df, config, plot_type, True)
 
         fig.update_layout(layout)
 
-        offset_x = prcsd_df[gene_A].values.max() * 0.015
-        offset_y = prcsd_df[gene_B].values.max() * 0.015
-        fig.update_xaxes(range=[-offset_x, prcsd_df[gene_A].values.max() + offset_x])
-        fig.update_yaxes(range=[-offset_y, prcsd_df[gene_B].values.max() + offset_y])
-
+        if xaxis_type != "log10":
+            offset_x = prcsd_df[gene_A].values.max() * 0.015
+            offset_y = prcsd_df[gene_B].values.max() * 0.015
+            fig.update_xaxes(range=[-offset_x, prcsd_df[gene_A].values.max() + offset_x])
+            fig.update_yaxes(range=[-offset_y, prcsd_df[gene_B].values.max() + offset_y])
+        else:
+            offset_x = np.log10(list(prcsd_df[gene_A].values)).max() * 0.015
+            offset_y = np.log10(list(prcsd_df[gene_B].values)).max() * 0.015
+            fig.update_xaxes(range=[-offset_x, np.log10(list(prcsd_df[gene_A].values)).max() + offset_x])
+            fig.update_yaxes(range=[-offset_y, np.log10(list(prcsd_df[gene_B].values)).max() + offset_y])         
+               
         return ret_str, fig, prcsd_df
         
     return "Genes {} were not found in any of the datasets".format(selected_genes), { "data" : {}}, found_in 
 
-def select_plot_type(df, config, plot_type):
+def select_plot_type(df, config, plot_type, isComparison = False ):
     x, y, color, hover_data, xaxis_type = config["x"], config["y"], config["color"], config["hover_data"], config["xaxis_type"]
     ret_fig = {}
 
     log = False
     if xaxis_type != "linear":
         log = True
-        df.loc[df[df["TPM"] < 1].index.values]["TPM"] = 1.0
+        if not isComparison:
+            df.loc[df[df["TPM"] < 1].index.values]["TPM"] = 1.0
+        else:
+            df.loc[df[df[y] < 1].index.values][y] = 1.0
+            df.loc[df[df[x] < 1].index.values][x] = 1.0
 
-    if plot_type == "violin":
-        ret_fig = px.violin(df, x=x, y=y, color=color, box=True, hover_data = hover_data, log_y=log)
-    elif plot_type == "violin_points":
-        ret_fig = px.violin(df, x=x, y=y, color=color, box=True,  points="all", hover_data = hover_data, log_y=log)
-    elif plot_type == "box":
-        ret_fig = px.box(df, x=x, y=y, color=color, hover_data = hover_data, log_y=log)
-        ret_fig.update_traces(boxmean="sd")
-    elif plot_type == "box_points":
-        ret_fig = px.box(df, x=x, y=y, color=color, points="all", hover_data = hover_data, log_y=log)
-        ret_fig.update_traces(boxmean="sd")
+    if not isComparison:
+        if plot_type == "violin" :
+            ret_fig = px.violin(df, x=x, y=y, color=color, box=True, hover_data = hover_data, log_y=log)
+        elif plot_type == "violin_points":
+            ret_fig = px.violin(df, x=x, y=y, color=color, box=True,  points="all", hover_data = hover_data, log_y=log)
+        elif plot_type == "box":
+            ret_fig = px.box(df, x=x, y=y, color=color, hover_data = hover_data, log_y=log)
+            ret_fig.update_traces(boxmean="sd")
+        elif plot_type == "box_points":
+            ret_fig = px.box(df, x=x, y=y, color=color, points="all", hover_data = hover_data, log_y=log)
+            ret_fig.update_traces(boxmean="sd")
+        else:
+            # just create a faux x component for the ter case
+            ter_df = df[df["TER"].astype(np.float16) >= 500]
+
+            ter_col = []
+            for _, row in df.iterrows():
+                if (float(row["TER"]) >= 500):
+                    ter_col.append("tight")
+                else:
+                    ter_col.append("normal")
+
+            df["TER_label"] = ter_col
+            # duplicate the x axis
+            ret_fig = px.strip(df, x=x, y=y, color=color, hover_data = hover_data, log_y=log, facet_col = "TER_label")       
     else:
-        ret_fig = px.strip(df, x=x, y=y, color=color, hover_data = hover_data, log_y=log)
-        
+        ret_fig = px.strip(df, x=x, y=y, color=color, hover_data = hover_data, log_y=log, log_x=log)
+            
     return ret_fig
 
 def change_symbol_ter(df, config, plot_type):
@@ -371,9 +396,9 @@ def metadata_menu():
             options = [
                 {'label':'Swarm', 'value':'swarm',},
                 {'label':'Violin', 'value':'violin'},
-                {'label': 'Vilion and points', 'value': 'violin_points'},
+                {'label': 'Vilion and Swarm', 'value': 'violin_points'},
                 {'label':'Box', 'value':'box'},
-                {'label':'Box and points', 'value':'box_points'}
+                {'label':'Box and Swarm', 'value':'box_points'}
             ]
         ),
         html.H6('Select the X Axis type'),
@@ -433,39 +458,36 @@ def init_callbacks(dash_app, data_dict):
 
                 return ret_string, last_fig, ret_data, [], [], [], []
             else:
-                if len(datasets_selected) == 1:
-                    # we have multiples genes to look for
-                    # genes = [gene.strip() for gene in user_input]
-                    selected_genes = "|".join(["({})".format(gene.strip()) for gene in user_input])
-                    found_in = all_tsv[all_tsv["genes"].str.fullmatch("\\b"+selected_genes+"\\b", case = False, na=False)]
+                # we have multiples genes to look for
+                # genes = [gene.strip() for gene in user_input]
+                selected_genes = "|".join(["({})".format(gene.strip()) for gene in user_input])
+                found_in = all_tsv[all_tsv["genes"].str.fullmatch("\\b"+selected_genes+"\\b", case = False, na=False)]
 
-                    # create the figure
-                    ret_string, last_fig, prcsd_data = compare_genes(found_in, metadata, user_input, datasets_selected, ter, plot_type, "genes", xaxis_type)
+                # create the figure
+                ret_string, last_fig, prcsd_data = compare_genes(found_in, metadata, user_input, datasets_selected, ter, plot_type, "genes", xaxis_type)
 
-                    # normal
-                    gene_A, gene_B = found_in["genes"].values[0], found_in["genes"].values[1]
-                    dummy_df = found_in.drop("genes", axis=1).transpose()
-                    dummy_df.columns = found_in["genes"].values
-                    pearson_data, spearman_data = compute_correlations(dummy_df, gene_A, gene_B)
+                # normal
+                gene_A, gene_B = found_in["genes"].values[0], found_in["genes"].values[1]
+                dummy_df = found_in.drop("genes", axis=1).transpose()
+                dummy_df.columns = found_in["genes"].values
+                pearson_data, spearman_data = compute_correlations(dummy_df, gene_A, gene_B)
 
-                    # for log10
-                    dummy_df = pd.DataFrame()
-                    dummy_df[found_in["genes"].values[0]] = np.log10(list(found_in.iloc[0, 1:].values + 1))
-                    dummy_df[found_in["genes"].values[1]] =  np.log10(list(found_in.iloc[1, 1:].values + 1))
-                    pearson_data_log, spearman_data_log = compute_correlations(dummy_df, gene_A, gene_B, isLog=True)
+                # for log10
+                dummy_df = pd.DataFrame()
+                dummy_df[found_in["genes"].values[0]] = np.log10(list(found_in.iloc[0, 1:].values + 1))
+                dummy_df[found_in["genes"].values[1]] =  np.log10(list(found_in.iloc[1, 1:].values + 1))
+                pearson_data_log, spearman_data_log = compute_correlations(dummy_df, gene_A, gene_B, isLog=True)
 
-                    pearson_data.extend(pearson_data_log)
-                    spearman_data.extend(spearman_data_log)
+                pearson_data.extend(pearson_data_log)
+                spearman_data.extend(spearman_data_log)
 
-                    corelation_cols = [ { "id": "corr_metric", "name": "Correlation Coefficient"},
-                                        { "id": "gene_a", "name": gene_A},
-                                        { "id": "gene_b", "name": gene_B} ]
+                corelation_cols = [ { "id": "corr_metric", "name": "Correlation Coefficient"},
+                                    { "id": "gene_a", "name": gene_A},
+                                    { "id": "gene_b", "name": gene_B} ]
 
-                    ret_data = prcsd_data.to_json(date_format='iso', orient='split')
-                    return ret_string, last_fig, ret_data, corelation_cols, pearson_data, corelation_cols, spearman_data
-                else:
-                    return "Please select *only* one dataset", { "data" : {} }, ret_data, [], [], [], []
-                 
+                ret_data = prcsd_data.to_json(date_format='iso', orient='split')
+                return ret_string, last_fig, ret_data, corelation_cols, pearson_data, corelation_cols, spearman_data
+    
         return "Search for gene and click submit", { "data" : {} }, ret_data, [], [], [], []
 
     @dash_app.callback(
