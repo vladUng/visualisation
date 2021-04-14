@@ -278,16 +278,18 @@ def select_plot_type(df, config, plot_type, isComparison = False, ter = None):
             tight_limit = 500
             ter_col = []
             for _, row in df.iterrows():
-                tight_name = ""
+                new_name = ""
                 if float(row["TER"]) >= tight_limit:
-                    tight_name = row[x]+"_tight"
-                    ter_col.append(tight_name)
+                    new_name = row[x]+"_tight"
                 else:
-                    ter_col.append(row[x])
+                    new_name = row[x]+"_non-tight"
 
-                if tight_name not in categorical_order and tight_name != "":
-                    categorical_order.extend([tight_name, row[x]])
+                ter_col.append(new_name)
 
+                if new_name not in categorical_order:
+                    categorical_order.extend([new_name])
+
+            categorical_order.sort()
             df[x] = ter_col
             color = x 
         
