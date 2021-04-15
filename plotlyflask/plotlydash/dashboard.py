@@ -114,6 +114,11 @@ def process_data(df_metadata, all_tsv):
         new_cols_all_tsv = pd.concat([new_cols_all_tsv, all_tsv_selected], axis=1)
         
     df_metadata = pd.merge(df_metadata, new_rows_metadata, how="outer")
+    df_metadata["isTER"] = True
+    for subtype in df_metadata["subset_name"].unique():
+        if df_metadata[df_metadata["subset_name"] == subtype]["TER"].isnull().all():
+          df_metadata.loc[df_metadata["subset_name"] == subtype, "isTER"] = False
+
     all_tsv = pd.concat([all_tsv, new_cols_all_tsv], axis=1)
     return df_metadata, all_tsv
 
@@ -279,10 +284,13 @@ def select_plot_type(df, config, plot_type, isComparison = False, ter = None):
             ter_col = []
             for _, row in df.iterrows():
                 new_name = ""
-                if float(row["TER"]) >= tight_limit:
-                    new_name = row[x]+"_tight"
+                if row["isTER"]:
+                    if float(row["TER"]) >= tight_limit:
+                        new_name = row[x]+"_tight"
+                    else:
+                        new_name = row[x]+"_non-tight"
                 else:
-                    new_name = row[x]+"_non-tight"
+                    new_name = row[x]
 
                 ter_col.append(new_name)
 
@@ -334,7 +342,17 @@ def create_datasets_tick_box(data_dict):
             "value": dataset,
         })
     return html.Div([
-        html.H5("Change the value in the text box to see callbacks in action!"),
+        # html.H5("Choose between dataset and subset"),
+        # dcc.RadioItems( id="datasource-type",
+        #     options=[
+        #         {'label': 'Dataset', 'value': 'dataset'},
+        #         {'label': 'Subset name', 'value': 'subset'},
+        #     ],
+        #     value='dataset'
+        # ),
+        html.Label( [html.H5('Select the data sources'), 
+            dcc.Link('Dataset information', href="https://docs.google.com/document/d/1yJYfFn6kdUS2KAp1tuGDLEzuR2hsscdESQTpLCxH1wU/edit")]),
+        html.Br(),
         dcc.Checklist(
             id = "data-checklist",
             options = options, value = datasets,
@@ -363,8 +381,8 @@ def create_dataset_panel(data_dict):
 
 def create_gene_search():
     return  html.Div(id="gene-search", children=[
-        html.H6("Enter the gene you want to analyse"),
         html.Hr(),
+        html.H6("Enter the gene you want to analyse"),
         html.Div(["Gene name: ",
             dcc.Input(id='gene-input', value="", type='text'),
             html.Button(id='gene-btn', n_clicks=0, children='Add gene'),
@@ -376,10 +394,9 @@ def create_gene_search():
                     options=[] , value=[], multi=True ) ])
                 ], 
                 style={'width': '20%', 'display': 'inline-block'} ),
-            html.Hr(),
             html.Div(id='display-selected-values')
             ]),
-        html.Br(),
+        html.Hr(),
     ])
 
 def metadata_menu():
@@ -399,9 +416,9 @@ def metadata_menu():
             options = [
                 {'label':'Swarm', 'value':'swarm',},
                 {'label':'Violin', 'value':'violin'},
-                {'label': 'Vilion and Swarm', 'value': 'violin_points'},
+                {'label': 'Violin and Points', 'value': 'violin_points'},
                 {'label':'Box', 'value':'box'},
-                {'label':'Box and Swarm', 'value':'box_points'}
+                {'label':'Box and Points', 'value':'box_points'}
             ]
         ),
         html.H6('Select the X Axis type'),
@@ -668,7 +685,7 @@ def init_dashboard(server):
                 html.Div(["Note: Pearson (raw and log10 transformed) and Spearman correlation values computed here are for guidance only. Values will be inaccurate/inappropriate with major outliers. Pearson correlations will be incorrect when data is non-normally distributed - common with expression data, hence the log10(TPM+1) transformation. Spearman is a non-parametric test built on rank order, so will not be affected by log transformations. Data should be downloaded (button below) and inspected before presentation/interpretation."]),
                 html.Hr()]),
             export_panel(),
-            html.Div(id='intermediate-value', style={'display': 'none'}) #used to store data between callbacks
+            html.Div(id='intermediate-value', style={'display': 'none'})
         ]),
     ])
     return dash_app.server
