@@ -1,3 +1,4 @@
+from dash_html_components.Div import Div
 import pandas as pd
 import dash
 import dash_html_components as html
@@ -54,21 +55,36 @@ def tcga_add_metadata(df, df_meta):
     df["2019_consensus_classifier"] = df_meta["2019_consensus_classifier"]
     df["TCGA_2017_AM_remap"] = df_meta["TCGA_2017_AM_remap"]
 
+    for cluster_size in range(4, 6):
+        df["RawKMeans_CS_{}".format(cluster_size)] = df_meta["RawKMeans_CS_{}".format(cluster_size)]
+        df["Ward_CS_{}".format(cluster_size)] = df_meta["Ward_CS_{}".format(cluster_size)]
+        df["GaussianMixture_CS_{}".format(cluster_size)] = df_meta["GaussianMixture_CS_{}".format(cluster_size)]
+
 
 def draw_umap(data, meta_df, n_neighbors=15, min_dist=0.1, n_components=2,
               metric='cosine', title='', colour="TCGA408_classifier"):
     umap_model = umap.UMAP( n_neighbors=n_neighbors, min_dist=min_dist, n_components=n_components, metric=metric)
 
     u_fit = umap_model.fit_transform(data.values)
-    umap_df = pd.DataFrame(u_fit, columns=["UMAP 1", "UMAP 2"])
+    columns = []
+    if n_components == 3:
+        columns = ["UMAP 1", "UMAP 2", "UMAP 3"]
+    else:
+        columns = ["UMAP 1", "UMAP 2"]
 
+    umap_df = pd.DataFrame(u_fit, columns=columns)
     dummy_meta = meta_df[meta_df["Samples"].isin(data.index.values)].rename(columns={"Samples": "sample"}).sort_values(by="sample").reset_index(drop=True)
 
     tcga_add_metadata(umap_df, dummy_meta)
 
     layout = go.Layout(title="UMAP plot TPM values", height=700)
 
-    fig = px.scatter(umap_df, x="UMAP 1", y="UMAP 2", color=colour, title=title)
+    fig = {}
+    if n_components == 3:
+        fig = px.scatter_3d(umap_df, x="UMAP 1", y="UMAP 2", z="UMAP 3", color=colour, title=title)
+    else:
+        fig = px.scatter(umap_df, x="UMAP 1", y="UMAP 2", color=colour, title=title)
+
     fig.update_layout(layout)
 
     return fig
@@ -76,18 +92,18 @@ def draw_umap(data, meta_df, n_neighbors=15, min_dist=0.1, n_components=2,
 
 def init_callbacks(dash_app, data_dict):
 
-    @dash_app.callback(
-        [Output('umap-config', "children"), Output("umap-plot", "figure")],
-        [Input("compute-viz", 'n_clicks')],
-        [State("neighbours-slider", 'value'),
-         State("distance-slider", 'value'), State("select-metrics", "value"), State("select-colouring", "value")]
-    )
-    def plotUMAP(btn, neighbours, distance, metric, colouring):
+    # For Figure 1 
 
-        n_comp = 2
-        # metric = 'cosine'
-        colouring = "TCGA408_classifier"
-        ret_string = "Umap with the following config: neighbours: {}, Distance: {}, Metric: {}, Colour: {}, Components: {}".format(
+    @dash_app.callback(
+        [Output('umap-config-1', "children"), Output("umap-plot-1", "figure")],
+        [Input("compute-viz-1", 'n_clicks')],
+        [State("neighbours-slider-1", 'value'),
+         State("distance-slider-1", 'value'), State("select-metrics-1", "value"), State("select-colouring-1", "value"),
+         State("select-components-1", "value")]
+    )
+    def plotUMAP(btn, neighbours, distance, metric, colouring, n_comp):
+
+        ret_string = "Umap with the following config: Neighbours: {}, Distance: {}, Metric: {}, Colour: {}, Components: {}".format(
             neighbours, distance, metric, colouring, n_comp)
 
         figure = draw_umap(data_dict["data"], data_dict["metadata"], n_neighbors=neighbours,
@@ -96,56 +112,107 @@ def init_callbacks(dash_app, data_dict):
         return ret_string, figure
 
     @dash_app.callback(
-        Output('neighbours-output-container', "children"),
-        [Input("neighbours-slider", 'value')]
+        Output('neighbours-output-container-1', "children"),
+        [Input("neighbours-slider-1", 'value')]
     )
     def updateNeighboursSlider(value):
         return "Selected neighbours value {}".format(value)
 
     @dash_app.callback(
-        Output('distance-output-container', "children"),
-        [Input("distance-slider", 'value')]
+        Output('distance-output-container-1', "children"),
+        [Input("distance-slider-1", 'value')]
     )
     def updateDistanceSlider(value):
         return "Selected distance value {}".format(value)
 
-def create_config_menu():
-    return html.Div(id="config", style={"width": "50%", "column-count": "2"},
+
+    # For Figure 2
+    @dash_app.callback(
+        [Output('umap-config-2', "children"), Output("umap-plot-2", "figure")],
+        [Input("compute-viz-2", 'n_clicks')],
+        [State("neighbours-slider-2", 'value'),
+         State("distance-slider-2", 'value'), State("select-metrics-2", "value"), State("select-colouring-2", "value"),
+         State("select-components-2", "value")]
+    )
+    def plotUMAP_2(btn, neighbours, distance, metric, colouring, n_comp):
+        
+        ret_string = "Umap with the following config: Neighbours: {}, Distance: {}, Metric: {}, Colour: {}, Components: {}".format(
+            neighbours, distance, metric, colouring, n_comp)
+
+        figure = draw_umap(data_dict["data"], data_dict["metadata"], n_neighbors=neighbours,
+                           min_dist=distance, n_components=n_comp, metric=metric, colour=str(colouring))
+        return ret_string, figure
+
+    @dash_app.callback(
+        Output('neighbours-output-container-2', "children"),
+        [Input("neighbours-slider-2", 'value')]
+    )
+    def updateNeighboursSlider(value):
+        return "Selected neighbours value {}".format(value)
+
+    @dash_app.callback(
+        Output('distance-output-container-2', "children"),
+        [Input("distance-slider-2", 'value')]
+    )
+    def updateDistanceSlider(value):
+        return "Selected distance value {}".format(value)
+
+def create_config_menu(no_figure, df_meta):
+    default_comp = 2
+    default_metric = "cosine"
+
+    if no_figure == 2:
+        default_comp = 3
+        default_metric = "euclidean"
+
+    colouring_options = ["TCGA408_classifier", "2019_consensus_classifier", "TCGA_2017_AM_remap"]
+    colouring_options = colouring_options + list(df_meta.columns[-6:]) 
+
+    return html.Div(id="config-{}".format(no_figure), #style={"width": "50%", "column-count": "2"},
               children= [
+                html.H5("Choose the parameters for Figure {}".format(no_figure) ),
                 html.H6("Neighbours Slider"),
                 dcc.Slider(
-                    id='neighbours-slider',
+                    id="neighbours-slider-{}".format(no_figure),
                     min=0, max=100, step=10,
                     marks={0: '0', 25: '25', 50: '50', 75: '75', 100: '100'},
-                    value=20
+                    value=10
                 ),
-                html.Div(id='neighbours-output-container'),
+                html.Div(id='neighbours-output-container-{}'.format(no_figure)),
                 html.H6("Distance Slider"),
                 dcc.Slider(
-                    id='distance-slider',
+                    id="distance-slider-{}".format(no_figure),
                     min=0, max=1, step=0.1,
                     marks={0: '0', 0.25: '0.25', 0.5: '0.5', 0.75: '0.75', 1.0: '1.0'},
-                    value=0.5
+                    value=0.2
                 ),
-                html.Div(id='distance-output-container'),
-                html.H6('Select colour'),
+                html.Div(id="distance-output-container-{}".format(no_figure)),
+                html.Br(),
+                html.H6('Select number of components'),
                 dcc.RadioItems(
-                    id="select-colouring", value='TCGA_2017_AM_remap',
+                    id="select-components-{}".format(no_figure), value=default_comp,
                     options = [
-                        {'label':'TCGA 2017', 'value':'TCGA408_classifier',},
-                        # {'label':'Remap TCGA 2017', 'value':'TCGA_2017_AM_remap'},
-                        # {'label': 'Remap Consensus', 'value': '2019_consensus_classifier'},
+                        {'label':'Two', 'value': 2,},
+                        {'label':'Three', 'value': 3 },
                     ]
+                ),
+                html.H6('Select colour'),
+                dcc.Drp(
+                    id="select-colouring-{}".format(no_figure), value='TCGA_2017_AM_remap',
+                    options = [{"label": i, "value": i} for i in colouring_options]
                 ),
                 html.H6('Select distance metric'),
                 dcc.RadioItems(
-                    id="select-metrics", value='cosine',
+                    id="select-metrics-{}".format(no_figure), value=default_metric,
                     options = [
                         {'label':'Cosine', 'value':'cosine',},
                         {'label':'Euclidean', 'value':'euclidean'},
                         {'label': 'Manhattan', 'value': 'manhattan'},
                     ]
                 ),
+                html.Br(),
+                html.Button(id="compute-viz-{}".format(no_figure), n_clicks=0, children='Figure {}'.format(no_figure)),
+                html.Br(),
             ])
 
 def init_dashboard(server):
@@ -165,18 +232,27 @@ def init_dashboard(server):
         html.H1(children='UMAP visualisation tool'),
         html.Div(id="parrent-all", children=[
             html.Hr(),
-            html.H5("Choose the parameters"),
-            create_config_menu(),
-            html.Br(),
-            html.Button(id='compute-viz', n_clicks=0, children='Compute'),
-            html.Br(),
+            html.Div(id = "figure-contols", style={"column-count": "2"}, children = [
+                create_config_menu(1, data_dict["metadata"]),
+                create_config_menu(2, data_dict["metadata"]),
+            ]),
             html.Hr(),
-            html.Div(id='umap-config'),
-            dcc.Graph(
-                id='umap-plot',
-                figure={ "data": {}, 
-                "layout": {"title": "Select the configuration first", 
-                "height": 300} })
+            html.Div(id = "figures",  style={ "column-count": "2"}, children=[
+                html.Div(id='umap-config-{}'.format(1)),
+                dcc.Graph(
+                    id='umap-plot-{}'.format(1),
+                    figure={ "data": {}, 
+                    "layout": {"title": "Select the configuration first", 
+                    "height": 300} 
+                }),
+                html.Div(id='umap-config-{}'.format(2)),
+                dcc.Graph(
+                    id='umap-plot-{}'.format(2),
+                    figure={ "data": {}, 
+                    "layout": {"title": "Select the configuration first", 
+                    "height": 300} 
+                })
+            ])
         ]),
     ])
     return dash_app.server
