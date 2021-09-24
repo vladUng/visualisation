@@ -12,7 +12,9 @@ def init_app():
         from . import routes
         
         # Import Dash application
-        from .plotlydash.dashboard import init_dashboard
+        # from .plotlydash.dashboard import init_dashboard
+        from .plotlydash.manyfold import init_dashboard
+
         app = init_dashboard(app)
 
         return app

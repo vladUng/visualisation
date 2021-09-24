@@ -1,5 +1,3 @@
-from threading import BoundedSemaphore
-from dash_html_components.Hr import Hr
 import numpy as np
 import pandas as pd
 import dash
