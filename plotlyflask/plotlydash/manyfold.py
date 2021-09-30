@@ -56,9 +56,9 @@ def tcga_add_metadata(df, df_meta):
     df["TCGA_2017_AM_remap"] = df_meta["TCGA_2017_AM_remap"]
 
     for cluster_size in range(4, 6):
-        df["RawKMeans_CS_{}".format(cluster_size)] = df_meta["RawKMeans_CS_{}".format(cluster_size)]
-        df["Ward_CS_{}".format(cluster_size)] = df_meta["Ward_CS_{}".format(cluster_size)]
-        df["GaussianMixture_CS_{}".format(cluster_size)] = df_meta["GaussianMixture_CS_{}".format(cluster_size)]
+        df["RawKMeans_CS_{}".format(cluster_size)] = df_meta["RawKMeans_CS_{}".format(cluster_size)].astype(str)
+        df["Ward_CS_{}".format(cluster_size)] = df_meta["Ward_CS_{}".format(cluster_size)].astype(str)
+        df["GaussianMixture_CS_{}".format(cluster_size)] = df_meta["GaussianMixture_CS_{}".format(cluster_size)].astype(str)
 
 
 def draw_umap(data, meta_df, n_neighbors=15, min_dist=0.1, n_components=2,
@@ -83,7 +83,12 @@ def draw_umap(data, meta_df, n_neighbors=15, min_dist=0.1, n_components=2,
     if n_components == 3:
         fig = px.scatter_3d(umap_df, x="UMAP 1", y="UMAP 2", z="UMAP 3", color=colour, title=title)
     else:
+        
+
+
         fig = px.scatter(umap_df, x="UMAP 1", y="UMAP 2", color=colour, title=title)
+
+
 
     fig.update_layout(layout)
 
@@ -174,7 +179,7 @@ def create_config_menu(no_figure, df_meta):
                 html.H6("Neighbours Slider"),
                 dcc.Slider(
                     id="neighbours-slider-{}".format(no_figure),
-                    min=0, max=100, step=10,
+                    min=0, max=100, step=5,
                     marks={0: '0', 25: '25', 50: '50', 75: '75', 100: '100'},
                     value=10
                 ),
@@ -197,7 +202,7 @@ def create_config_menu(no_figure, df_meta):
                     ]
                 ),
                 html.H6('Select colour'),
-                dcc.Drp(
+                dcc.Dropdown(
                     id="select-colouring-{}".format(no_figure), value='TCGA_2017_AM_remap',
                     options = [{"label": i, "value": i} for i in colouring_options]
                 ),
