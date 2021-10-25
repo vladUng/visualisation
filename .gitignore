@@ -138,3 +138,4 @@ exported_data/
 token.pickle
 .env
 *.DS_Store
+.DS_Store
