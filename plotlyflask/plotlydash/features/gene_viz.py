@@ -1,3 +1,5 @@
+from plotlyflask.plotlydash.main import menu
+from plotlyflask.plotlydash.main import app as dash_app
 import numpy as np
 import pandas as pd
 import dash
@@ -507,7 +509,7 @@ def export_panel():
 def init_callbacks(dash_app, data_dict):
     # latest fig to save
     @dash_app.callback(
-        [Output('search-result', "children"), Output('dataset-plots', "figure"), Output('intermediate-value', 'children'),
+        [Output('search-result', "children"), Output('dataset-plots-viz', "figure"), Output('intermediate-value', 'children'),
          Output('pearson-table', 'columns'), Output('pearson-table', 'data')],
         Input('plot-gene', 'n_clicks'),
         [State("genes-dropdown", "value"),  State("data-checklist", "value"), State("ter-checklist", "value"),
@@ -648,7 +650,7 @@ def init_callbacks(dash_app, data_dict):
         [Input("export-plot", "n_clicks"), Input("export-data",
                                                  "n_clicks"), Input('intermediate-value', 'children')],
         [State("genes-dropdown", "value"), State("plot-width", "value"), State("plot-height", "value"),
-         State("plot-scale", "value"), State("dataset-plots", "figure"), State("data-checklist", "value")]
+         State("plot-scale", "value"), State("dataset-plots-viz", "figure"), State("data-checklist", "value")]
     )
     def export_plot(btn_1, btn_2,  data_json, user_input, width, height, scale, figure, datasets):
         # checking os
@@ -733,57 +735,41 @@ def init_callbacks(dash_app, data_dict):
 
         return ret_string
 
-
-def init_dashboard():
     """Create a Plotly Dash dashboard."""
 
-    from plotlyflask.plotlydash.main import app as dash_app
 
-    menu = html.Div([
-        html.Div(id='gene-viz-dislay'),
-        dcc.Link('Go to Gene Visualisation', href='/gene-vis'),
-        html.Div(id='gene-diff-dislay'),
-        dcc.Link('Go to Gene Differentiation', href='/gene-diff'),
-        html.Div(id='manyfold'),
-        dcc.Link('Go to Umap', href='/manyfold'),
-        dcc.Loading(id="ls-loading-1",
-                    children=[html.Div(id="ls-loading-output-1")], type="default"),
-    ])
+# update_all_datasets("data/")
+data_dict = import_data("data/")
+init_callbacks(dash_app, data_dict)
 
-    # update_all_datasets("data/")
-    data_dict = import_data("data/")
-    init_callbacks(dash_app, data_dict)
-
-    # Create Layout
-    layout = html.Div(children=[
-        menu,
-        html.Br(),
-        html.H1(children='JBU visualisation tool'),
-        html.Div(id="parrent-all", children=[
-            create_gene_search(),
-            html.Div(id="parent-controllers", style={"column-count": "2", "width": "fit-content"},
-                     children=[
-                create_dataset_panel(data_dict),
-                metadata_menu(),
-            ]),
-            dcc.Graph(
-                id='dataset-plots',
-                figure={"data": {},
-                        "layout": {"title": "No Gene Search", "height": 300}
-                        }),
-            html.Div([
-                html.H5("Correlations Table"),
-                html.Hr(),
-                DataTable(id="pearson-table", columns=[], data=[],
-                          style_table={"width": "30%"},
-                          style_header={
-                              'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
-                          style_cell={'textAlign': 'left'}),
-                html.Hr(),
-                html.Div(["Note: Pearson (raw and log10 transformed) and Spearman correlation values computed here are for guidance only. Values will be inaccurate/inappropriate with major outliers. Pearson correlations will be incorrect when data is non-normally distributed - common with expression data, hence the log10(TPM+1) transformation. Spearman is a non-parametric test built on rank order, so will not be affected by log transformations. Data should be downloaded (button below) and inspected before presentation/interpretation."]),
-                html.Hr()]),
-            export_panel(),
-            html.Div(id='intermediate-value', style={'display': 'none'})
+# Create Layout
+layout = html.Div(children=[
+    menu,
+    html.H1(children='JBU visualisation tool'),
+    html.Div(id="parrent-all-viz", children=[
+        create_gene_search(),
+        html.Div(id="parent-controllers-viz", style={"column-count": "2", "width": "fit-content"},
+                    children=[
+            create_dataset_panel(data_dict),
+            metadata_menu(),
         ]),
-    ])
-    return layout
+        dcc.Graph(
+            id='dataset-plots-viz',
+            figure={"data": {},
+                    "layout": {"title": "No Gene Search", "height": 300}
+                    }),
+        html.Div([
+            html.H5("Correlations Table"),
+            html.Hr(),
+            DataTable(id="pearson-table", columns=[], data=[],
+                      style_table={"width": "30%"},
+                      style_header={
+                'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
+                style_cell={'textAlign': 'left'}),
+            html.Hr(),
+            html.Div(["Note: Pearson (raw and log10 transformed) and Spearman correlation values computed here are for guidance only. Values will be inaccurate/inappropriate with major outliers. Pearson correlations will be incorrect when data is non-normally distributed - common with expression data, hence the log10(TPM+1) transformation. Spearman is a non-parametric test built on rank order, so will not be affected by log transformations. Data should be downloaded (button below) and inspected before presentation/interpretation."]),
+            html.Hr()]),
+        export_panel(),
+        html.Div(id='intermediate-value', style={'display': 'none'})
+    ]),
+])

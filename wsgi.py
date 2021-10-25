@@ -27,17 +27,25 @@ index_page = html.Div([
 
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
-    html.Div(id='page-content')
+    html.Div(id='page-content'),
 ])
 
-# # Update the index
+
+# menu = html.Div([
+#     html.Br(),
+#     dcc.Link('Go to Gene Visualisation', href='/gene-vis'), html.Br(),
+#     dcc.Link('Go to Gene Differentiation', href='/gene-diff'), html.Br(),
+#     dcc.Link('Go to Umap', href='/manyfold'), html.Br(),
+#     dcc.Loading(children=[html.Div(id="ls-loading-output-1")], type="default"),
+#     html.Br()
+# ])
 
 
 @app.callback(dash.dependencies.Output('page-content', 'children'),
               [dash.dependencies.Input('url', 'pathname')])
 def display_page(pathname):
     if pathname == '/gene-vis':
-        return gv.init_dashboard()
+        return gv.layout
     elif pathname == '/gene-diff':
         return gf.layout
     elif pathname == '/manyfold':
