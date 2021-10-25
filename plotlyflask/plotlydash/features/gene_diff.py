@@ -2,9 +2,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
 
-# from plotlyflask.plotlydash.main import app
 from plotlyflask.plotlydash.main import app
-# from app import app
 
 menu = html.Div([
     html.Div(id='gene-viz-dislay'),

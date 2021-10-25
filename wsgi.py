@@ -37,9 +37,9 @@ app.layout = html.Div([
               [dash.dependencies.Input('url', 'pathname')])
 def display_page(pathname):
     if pathname == '/gene-vis':
-        return gf.layout
+        return gv.init_dashboard()
     elif pathname == '/gene-diff':
-        return gv.layout
+        return gf.layout
     elif pathname == '/manyfold':
         return mf.layout
     else:
@@ -49,7 +49,7 @@ def display_page(pathname):
 
 def open_browser():
     # webbrowser.open_new('http://127.0.0.1:8080/dashapp')
-    webbrowser.open_new('http://127.0.0.1:8080/')
+    webbrowser.open_new('http://127.0.0.1:8080/gene-vis')
 
 
 if __name__ == "__main__":

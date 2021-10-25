@@ -9,7 +9,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from os import path, name
-import time 
+import time
 from datetime import datetime
 
 ##### Functions for .tsv handling #####
