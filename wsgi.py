@@ -13,7 +13,7 @@ from plotlyflask.plotlydash.main import app
 
 
 from plotlyflask.plotlydash.features import gene_diff as gf
-from plotlyflask.plotlydash.features import gene_viz as gv
+# from plotlyflask.plotlydash.features import gene_viz as gv
 from plotlyflask.plotlydash.features import manyfold as mf
 
 
@@ -31,21 +31,11 @@ app.layout = html.Div([
 ])
 
 
-# menu = html.Div([
-#     html.Br(),
-#     dcc.Link('Go to Gene Visualisation', href='/gene-vis'), html.Br(),
-#     dcc.Link('Go to Gene Differentiation', href='/gene-diff'), html.Br(),
-#     dcc.Link('Go to Umap', href='/manyfold'), html.Br(),
-#     dcc.Loading(children=[html.Div(id="ls-loading-output-1")], type="default"),
-#     html.Br()
-# ])
-
-
 @app.callback(dash.dependencies.Output('page-content', 'children'),
               [dash.dependencies.Input('url', 'pathname')])
 def display_page(pathname):
     if pathname == '/gene-vis':
-        return gv.layout
+        return gf.layout
     elif pathname == '/gene-diff':
         return gf.layout
     elif pathname == '/manyfold':
@@ -57,7 +47,7 @@ def display_page(pathname):
 
 def open_browser():
     # webbrowser.open_new('http://127.0.0.1:8080/dashapp')
-    webbrowser.open_new('http://127.0.0.1:8080/gene-vis')
+    webbrowser.open_new('http://127.0.0.1:8080/gene-diff')
 
 
 if __name__ == "__main__":

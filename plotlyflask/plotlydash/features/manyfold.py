@@ -1,7 +1,6 @@
 from plotlyflask.plotlydash.main import app as dash_app
 from plotlyflask.plotlydash.main import menu
 from dash_html_components.Div import Div
-import pandas as pd
 import dash_html_components as html
 import dash_core_components as dcc
 from dash.dependencies import Input, Output, State
@@ -9,6 +8,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 import numpy as np
+import pandas as pd
 
 from os import path, name
 import time
@@ -34,7 +34,7 @@ def import_data(base_path):
         ret_dict["data"] = ret_dict["data"].set_index("Unnamed: 0")
         ret_dict["metadata"] = pd.read_csv(
             base_path + "metadata.tsv", delimiter="\t")
-
+        print("Finished loading the data in {}".format(time.time()-start_time))
         # TPM and metadata
         return ret_dict
     else:
@@ -103,7 +103,6 @@ def draw_umap(data, meta_df, n_neighbors=15, min_dist=0.1, n_components=2,
 def init_callbacks(dash_app, data_dict):
 
     # For Figure 1
-
     @dash_app.callback(
         [Output('umap-config-1', "children"), Output("umap-plot-1", "figure")],
         [Input("compute-viz-1", 'n_clicks')],
@@ -137,7 +136,6 @@ def init_callbacks(dash_app, data_dict):
         return "Selected distance value {}".format(value)
 
     # For Figure 2
-
     @dash_app.callback(
         [Output('umap-config-2', "children"), Output("umap-plot-2", "figure")],
         [Input("compute-viz-2", 'n_clicks')],
