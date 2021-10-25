@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 BASE_DIR = path.abspath(path.dirname(__file__))
 load_dotenv(path.join(BASE_DIR, '.env'))
- 
+
 
 class Config:
     """Flask configuration variables."""
@@ -20,6 +20,6 @@ class Config:
     LESS_RUN_IN_DEBUG = environ.get('LESS_RUN_IN_DEBUG')
 
     # Static Assets
-    STATIC_FOLDER = "plotlyflask/static"
-    TEMPLATES_FOLDER = 'plotlyflask/templates'
+    # STATIC_FOLDER = "plotlyflask/static"
+    # TEMPLATES_FOLDER = 'plotlyflask/templates'
     COMPRESSOR_DEBUG = environ.get('COMPRESSOR_DEBUG')
