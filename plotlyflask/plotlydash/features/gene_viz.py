@@ -535,31 +535,25 @@ def init_callbacks(dash_app, data_dict):
                 return ret_string, last_fig, ret_data, [], []
             else:
                 # we have multiples genes to look for
-                selected_genes = "|".join(
-                    ["({})".format(gene.strip()) for gene in user_input])
-                found_in = all_tsv[all_tsv["genes"].str.fullmatch(
-                    "\\b"+selected_genes+"\\b", case=False, na=False)]
+                first_gene = all_tsv[all_tsv["genes"].str.fullmatch("\\b"+ user_input[0].strip() +"\\b", case=False, na=False)]
+                second_gene = all_tsv[all_tsv["genes"].str.fullmatch("\\b"+ user_input[1].strip( )+"\\b", case=False, na=False)]
+                found_in = pd.concat([first_gene, second_gene])
 
                 # create the figure
-                ret_string, last_fig, prcsd_data = compare_genes(
-                    found_in, metadata, user_input, datasets_selected, plot_type, xaxis_type)
+                ret_string, last_fig, prcsd_data = compare_genes( found_in, metadata, user_input, datasets_selected, plot_type, xaxis_type)
 
                 # normal
                 gene_A, gene_B = found_in["genes"].values[0], found_in["genes"].values[1]
                 dummy_df = found_in.drop("genes", axis=1).transpose()
                 dummy_df.columns = found_in["genes"].values
-                pearson_corr, spearman_corr = compute_correlations(
-                    dummy_df, gene_A, gene_B)
+                pearson_corr, spearman_corr = compute_correlations(dummy_df, gene_A, gene_B)
 
                 # for log10
                 dummy_df = pd.DataFrame()
-                dummy_df[found_in["genes"].values[0]] = np.log10(
-                    list(found_in.iloc[0, 1:].values + 1))
-                dummy_df[found_in["genes"].values[1]] = np.log10(
-                    list(found_in.iloc[1, 1:].values + 1))
+                dummy_df[found_in["genes"].values[0]] = np.log10(list(found_in.iloc[0, 1:].values + 1))
+                dummy_df[found_in["genes"].values[1]] = np.log10(list(found_in.iloc[1, 1:].values + 1))
                 # we don't need to calculate for spearman, but it's easier to the function
-                pearson_corr_log, _ = compute_correlations(
-                    dummy_df, gene_A, gene_B, isLog=True)
+                pearson_corr_log, _ = compute_correlations( dummy_df, gene_A, gene_B, isLog=True)
 
                 corelation_cols = [{"id": "corr_metric", "name": "Correlation Coefficient"},
                                    {"id": "value", "name": "{} vs {}".format(gene_A, gene_B)}]
@@ -573,8 +567,7 @@ def init_callbacks(dash_app, data_dict):
                         "value": spearman_corr[0]["gene_b"]}
                 ]
 
-                ret_data = prcsd_data.to_json(
-                    date_format='iso', orient='split')
+                ret_data = prcsd_data.to_json(date_format='iso', orient='split')
                 return ret_string, last_fig, ret_data, corelation_cols, table_data
 
         return "Search for gene and click submit", {"data": {}}, ret_data, [], []

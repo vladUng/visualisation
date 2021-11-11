@@ -60,6 +60,9 @@ def init_callbacks(dash_app, data_dict):
 
 
 filename = "Basal_split.tsv"
+#filename = "BasalSplit_vsOthers_v2_vulcano.tsv"
+filename = "BasalSplit_v2_vulcano.tsv"
+
 data_dict = import_data("data/VolcanoPlots/" + filename)
 init_callbacks(dash_app, data_dict)
 

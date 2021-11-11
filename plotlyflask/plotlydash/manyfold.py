@@ -25,14 +25,12 @@ def import_data(base_path):
     Returns: 
         DataDict: A dictionary which contains the the all_tsv and metadata 
     """
-    start_time = time.time()
     if path.exists(base_path):
 
         ret_dict = {}
         ret_dict["data"] = pd.read_csv(base_path + "TPM.tsv", delimiter="\t")
         ret_dict["data"] = ret_dict["data"].set_index("Unnamed: 0")
-        ret_dict["metadata"] = pd.read_csv(
-            base_path + "metadata.tsv", delimiter="\t")
+        ret_dict["metadata"] = pd.read_csv(base_path + "metadata.tsv", delimiter="\t")
 
         # TPM and metadata
         return ret_dict
