@@ -737,7 +737,7 @@ init_callbacks(dash_app, data_dict)
 
 # Create Layout
 layout = html.Div(children=[
-    # menu,
+    menu,
     html.H1(children='JBU visualisation tool'),
     html.Div(id="parrent-all-viz", children=[
         create_gene_search(),

@@ -10,9 +10,9 @@ from threading import Timer
 
 from plotlyflask.plotlydash.main import app
 
-# from plotlyflask.plotlydash.features import gene_diff as gf
+from plotlyflask.plotlydash.features import gene_diff as gf
 from plotlyflask.plotlydash.features import gene_viz as gv
-# from plotlyflask.plotlydash.features import manyfold as mf
+from plotlyflask.plotlydash.features import manyfold as mf
 
 
 index_page = html.Div([
@@ -20,9 +20,9 @@ index_page = html.Div([
     html.H2("Below are the options available."),
     dcc.Link('Gene Viz', href='/gene-vis'),
     html.Br(),
-    # dcc.Link('Man ifold', href='/gene-diff'),
-    # html.Br(),
-    # dcc.Link('Manifold', href='/manyfold'),
+    dcc.Link('Man ifold', href='/gene-diff'),
+    html.Br(),
+    dcc.Link('Manifold', href='/manyfold'),
 ])
 
 app.layout = html.Div([
@@ -36,14 +36,12 @@ app.layout = html.Div([
 def display_page(pathname):
     if pathname == '/gene-vis':
         return gv.layout
-    # elif pathname == '/gene-diff':
-    #     return gf.layout
-    # elif pathname == '/manyfold':
-    #     return mf.layout
+    elif pathname == '/gene-diff':
+        return gf.layout
+    elif pathname == '/manyfold':
+        return mf.layout
     else:
         return index_page
-    # You could also return a 404 "URL not found" page here
-
 
 def open_browser():
     # webbrowser.open_new('http://127.0.0.1:8080/dashapp')

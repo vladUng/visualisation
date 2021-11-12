@@ -30,10 +30,10 @@ def import_data(base_path):
     if path.exists(base_path):
 
         ret_dict = {}
-        ret_dict["data"] = pd.read_csv(base_path + "TPM.tsv", delimiter="\t")
-        ret_dict["data"] = ret_dict["data"].set_index("Unnamed: 0")
+        ret_dict["data"] = pd.read_csv(base_path + "TPM_raw.tsv", delimiter="\t")
+        ret_dict["data"] = ret_dict["data"].set_index("Sample")
         ret_dict["metadata"] = pd.read_csv(
-            base_path + "metadata.tsv", delimiter="\t")
+            base_path + "metadata_pca.tsv", delimiter="\t")
         print("Finished loading the data in {}".format(time.time()-start_time))
         # TPM and metadata
         return ret_dict
@@ -64,12 +64,13 @@ def tcga_add_metadata(df, df_meta):
             cluster_size)].astype(str)
         df["GaussianMixture_CS_{}".format(
             cluster_size)] = df_meta["GaussianMixture_CS_{}".format(cluster_size)].astype(str)
+        df["FuzzyCMeans_CS_{}".format(
+            cluster_size)] = df_meta["GaussianMixture_CS_{}".format(cluster_size)].astype(str)
 
 
 def draw_umap(data, meta_df, n_neighbors=15, min_dist=0.1, n_components=2,
               metric='cosine', title='', colour="TCGA408_classifier"):
-    umap_model = umap.UMAP(n_neighbors=n_neighbors, min_dist=min_dist,
-                           n_components=n_components, metric=metric)
+    umap_model = umap.UMAP(n_neighbors=n_neighbors, min_dist=min_dist, n_components=n_components, metric=metric)
 
     u_fit = umap_model.fit_transform(data.values)
     columns = []
@@ -79,8 +80,7 @@ def draw_umap(data, meta_df, n_neighbors=15, min_dist=0.1, n_components=2,
         columns = ["UMAP 1", "UMAP 2"]
 
     umap_df = pd.DataFrame(u_fit, columns=columns)
-    dummy_meta = meta_df[meta_df["Samples"].isin(data.index.values)].rename(
-        columns={"Samples": "sample"}).sort_values(by="sample").reset_index(drop=True)
+    dummy_meta = meta_df[meta_df["Samples"].isin(data.index.values)].rename(columns={"Samples": "sample"}).sort_values(by="sample").reset_index(drop=True)
 
     tcga_add_metadata(umap_df, dummy_meta)
 
@@ -88,12 +88,10 @@ def draw_umap(data, meta_df, n_neighbors=15, min_dist=0.1, n_components=2,
 
     fig = {}
     if n_components == 3:
-        fig = px.scatter_3d(umap_df, x="UMAP 1", y="UMAP 2",
-                            z="UMAP 3", color=colour, title=title)
+        fig = px.scatter_3d(umap_df, x="UMAP 1", y="UMAP 2", z="UMAP 3", color=colour, title=title)
     else:
 
-        fig = px.scatter(umap_df, x="UMAP 1", y="UMAP 2",
-                         color=colour, title=title)
+        fig = px.scatter(umap_df, x="UMAP 1", y="UMAP 2", color=colour, title=title)
 
     fig.update_layout(layout)
 
@@ -116,8 +114,7 @@ def init_callbacks(dash_app, data_dict):
         ret_string = "Umap with the following config: Neighbours: {}, Distance: {}, Metric: {}, Colour: {}, Components: {}".format(
             neighbours, distance, metric, colouring, n_comp)
 
-        figure = draw_umap(data_dict["data"], data_dict["metadata"], n_neighbors=neighbours,
-                           min_dist=distance, n_components=n_comp, metric=metric, colour=str(colouring))
+        figure = draw_umap(data_dict["data"], data_dict["metadata"], n_neighbors=neighbours, min_dist=distance, n_components=n_comp, metric=metric, colour=str(colouring))
 
         return ret_string, figure
 
@@ -176,9 +173,8 @@ def create_config_menu(no_figure, df_meta):
         default_comp = 3
         default_metric = "euclidean"
 
-    colouring_options = ["TCGA408_classifier",
-                         "2019_consensus_classifier", "TCGA_2017_AM_remap"]
-    colouring_options = colouring_options + list(df_meta.columns[-6:])
+    colouring_options = ["TCGA408_classifier", "2019_consensus_classifier", "TCGA_2017_AM_remap"]
+    colouring_options = colouring_options + list(df_meta.columns[-8:])
 
     return html.Div(id="config-{}".format(no_figure),  # style={"width": "50%", "column-count": "2"},
                     children=[
