@@ -523,8 +523,7 @@ def init_callbacks(dash_app, data_dict):
             if len(user_input) == 1:
                 gene = user_input[0].strip()
                 # search for the gene
-                found_in = all_tsv[all_tsv["genes"].str.fullmatch(
-                    "\\b"+gene+"\\b", case=False, na=False)]
+                found_in = all_tsv[all_tsv["genes"].str.fullmatch( "\\b"+gene+"\\b", case=False, na=False)]
                 # create the figure
                 ret_string, last_fig, prcsd_data = create_datasets_plot(
                     found_in, metadata, gene, datasets_selected, ter, plot_type, xaxis, xaxis_type)
@@ -732,8 +731,8 @@ def init_callbacks(dash_app, data_dict):
 
 
 # update_all_datasets("data/")
-data_dict = import_data("data/")
-init_callbacks(dash_app, data_dict)
+# data_dict = import_data("data/")
+# init_callbacks(dash_app, data_dict)
 
 # Create Layout
 layout = html.Div(children=[

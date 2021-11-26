@@ -11,7 +11,7 @@ from threading import Timer
 from plotlyflask.plotlydash.main import app
 
 from plotlyflask.plotlydash.features import gene_diff as gf
-from plotlyflask.plotlydash.features import gene_viz as gv
+# from plotlyflask.plotlydash.features import gene_viz as gv
 from plotlyflask.plotlydash.features import manyfold as mf
 
 
@@ -20,7 +20,7 @@ index_page = html.Div([
     html.H2("Below are the options available."),
     dcc.Link('Gene Viz', href='/gene-vis'),
     html.Br(),
-    dcc.Link('Man ifold', href='/gene-diff'),
+    dcc.Link('Differential Expression', href='/gene-diff'),
     html.Br(),
     dcc.Link('Manifold', href='/manyfold'),
 ])
@@ -34,9 +34,10 @@ app.layout = html.Div([
 @app.callback(dash.dependencies.Output('page-content', 'children'),
               [dash.dependencies.Input('url', 'pathname')])
 def display_page(pathname):
-    if pathname == '/gene-vis':
-        return gv.layout
-    elif pathname == '/gene-diff':
+    # if pathname == '/gene-vis':
+    #     return gv.layout
+    # el
+    if pathname == '/gene-diff':
         return gf.layout
     elif pathname == '/manyfold':
         return mf.layout

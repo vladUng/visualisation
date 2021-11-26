@@ -2,7 +2,10 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
 import dash_bio as dashbio
+import plotly
 import plotly.express as px
+
+import plotly.graph_objects as go
 
 
 from plotlyflask.plotlydash.main import menu
@@ -13,6 +16,16 @@ import pandas as pd
 
 from os import path, walk
 import time
+
+import json
+
+
+styles = {
+    'pre': {
+        'border': 'thin lightgrey solid',
+        'overflowX': 'scroll'
+    }
+}
 
 ##### Functions for .tsv handling #####
 
@@ -29,12 +42,12 @@ def import_data(fullPath):
 
 
 def draw_volcano(df, fold_changes):
-    return dashbio.VolcanoPlot(
+    fig = dashbio.VolcanoPlot(
         dataframe=df,
         effect_size="fold_change",
         gene="genes",
         snp=None,
-        p="p",
+        p="q",
         genomewideline_value=2.5,
         logp=True,
         effect_size_line=fold_changes,
@@ -43,8 +56,91 @@ def draw_volcano(df, fold_changes):
         col='#2A3F5F',
         point_size=8,
         effect_size_line_width=4,
-        genomewideline_width=2
+        genomewideline_width=2,
     )
+
+    fig = show_selected_genes_vulcano(df, fig)
+    fig.update_layout(clickmode='event+select')
+    
+    return fig
+
+def show_selected_genes_vulcano(df, fig):
+    custom_traces = create_custom_traces()
+    colors =  px.colors.qualitative.Vivid
+    for idx, trace in enumerate(custom_traces): 
+        fig.add_trace(create_gene_trace(df, trace["genes"], name=trace["title"], marker_color=colors[idx]))
+
+    return fig
+
+
+def show_selected_genes_pi(df_1, df_2, fig):
+    custom_traces = create_custom_traces()
+    colors =  px.colors.qualitative.Vivid
+    colors_2 = px.colors.qualitative.Safe
+    for idx, trace in enumerate(custom_traces): 
+        fig.add_trace(create_gene_trace(df_1, trace["genes"], name=trace["title"], marker_color=colors[idx], df_2=df_2))
+
+        # fig.add_trace(create_gene_trace(df_2, trace["genes"], name=trace["title"], marker_color=colors[idx], volcano_plot=False, x_axis=False))
+
+    return fig 
+
+def create_custom_traces():
+
+    ifnq_genes = ['B2M', 'BATF2', 'BTN3A3', 'CD74', 'CIITA', 'CXCL10', 'CXCL9',
+       'EPSTI1', 'GBP1', 'GBP4', 'GBP5', 'HAPLN3', 'HLA-DPA1', 'IDO1',
+       'IFI30', 'IFI35', 'IFIT3', 'IFITM1', 'IL32', 'IRF1', 'NLRC5',
+       'PARP9', 'PSMB8-AS1', 'PSMB9', 'SAMHD1', 'SECTM1', 'STAT1', 'TAP1',
+       'TNFSF13B', 'TYMP', 'UBE2L6', 'WARS1', 'ZBP1']
+
+    rarg_genes = ['ADGRF1', 'ALDH3B1', 'ANKRD13D', 'ANXA11', 'B3GNT3', 'BHLHE41',
+       'CAPN1', 'CDK2AP2', 'CIB1', 'CPTP', 'CTSH', 'GALE', 'HSH2D',
+       'MMEL1', 'OAS1', 'PLCD3', 'PNPLA2', 'PRKCD', 'RARG', 'RNPEPL1',
+       'TCIRG1', 'THEM6', 'TNFAIP2', 'UBA7', 'UNC93B1', 'VAMP8', 'VSIG2']
+
+    luminal_markers = ["KRT20", "PPARG", "FOXA1", "GATA3", "SNX31", "UPK1A", "UPK2", "FGFR3"]
+
+    basal_markers = ["CD44", "KRT6A", "KRT5", "KRT14", "COL17A1"]
+
+    squamos_markers = ["DSC3", "GSDMC", "TCGM1", "PI3", "TP63"]
+
+    immune_markers = ["CD274", "PDCD1LG2", "IDO1", "CXCL11", "L1CAM", "SAA1"]
+
+    neural_diff = ["MSI1", "PLEKHG4B", "GNG4", "PEG10", "RND2", "APLP1", "SOX2", "TUBB2B"]
+
+    custom_traces = []
+    # SB
+    custom_traces.append({"genes":ifnq_genes, "title": "SB_IFNQ"})
+    custom_traces.append({"genes":rarg_genes, "title": "SB_RARG"})
+    # TCGA
+    custom_traces.append({"genes":luminal_markers, "title": "TCGA_luminal"})
+    custom_traces.append({"genes":basal_markers, "title": "TCGA_basal"})
+    custom_traces.append({"genes":squamos_markers, "title": "TCGA_squamos"})
+    custom_traces.append({"genes":immune_markers, "title": "TCGA_immune"})
+    custom_traces.append({"genes":neural_diff, "title": "TCGA_neuroendocrine"})
+    
+    return custom_traces
+
+
+def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", marker_size=8, df_2=None): 
+
+    selected_df = df[df["genes"].isin(genes)]
+
+    x, y = [], []
+    if df_2 is None:
+        y = -np.log10(selected_df["q"])
+        x = selected_df['fold_change']
+    else:
+        selected_df_2 = df_2[df_2["genes"].isin(genes)]
+        
+        x = -np.log10(selected_df["q"]) * selected_df["fold_change"]
+        y = -np.log10(selected_df_2["q"]) * selected_df_2["fold_change"]
+
+    markers = {"size": marker_size, "color": selected_df.shape[0] * [marker_color] }
+
+    trace = dict(type='scatter', x=x, y= y,  showlegend=True, marker=markers, text=selected_df["genes"], mode="markers", name=name)
+
+    return trace
+
 
 def draw_pi_plot(df_1, df_2, file_1, file_2):
 
@@ -66,8 +162,9 @@ def draw_pi_plot(df_1, df_2, file_1, file_2):
     # Note the genes number may differ and we're setting the index of the DataFrame which has the most genes (i.e. rows)
     #  However, there might be some genes in the second df which are not in the first one. Regardless, we set the nan values to 0 (points will be added to the center)
     dummy_df = pd.concat([first_df["x"], second_df["y"]], axis=1).fillna(0).reset_index().rename(columns={"index":"genes"})
-
-    fig = px.scatter(dummy_df, x="x", y="y", hover_data=["genes"], title=title)
+    
+    dummy_df["main"] = "PI_plot"
+    fig = px.scatter(dummy_df, x="x", y="y", hover_data=["genes"], color="main", title=title)
 
 
     fig.add_shape(type='line',
@@ -83,7 +180,7 @@ def draw_pi_plot(df_1, df_2, file_1, file_2):
                     xref='x',
                     yref='y')
 
-    # fig.update_traces(marker=dict(size=12, line=dict(width=2, color='DarkSlateGrey')), selector=dict(mode='markers'))
+    fig = show_selected_genes_pi(first_df.reset_index(), second_df.reset_index(), fig)
 
     return fig
 
@@ -155,9 +252,25 @@ def init_callbacks(dash_app):
         figure = draw_pi_plot(data_dict_1["data"], data_dict_2["data"], file_1, file_2)
         return ret_string, figure
 
+    @dash_app.callback(
+        Output('click-data', 'children'),
+        Input('figure-volcano', 'clickData'))
+    def display_click_data(clickData):
+        if clickData is not None:
+            # jsonText = clickData["points"][0]["text"]
+
+            jsonText = [point["text"] for point in clickData["points"] ]
+
+            return jsonText
+        else: 
+            return "No points selected"
+
 
 
 files = next(walk("data/VolcanoPlots/"), (None, None, []))[2]
+
+if ".DS_Store" in files:
+    files.remove(".DS_Store")
 
 init_callbacks(dash_app)
 
@@ -186,6 +299,13 @@ layout = html.Div(children=[
                 figure={"data": {},
                         "layout": {"title": "No π plot displayed", "height": 800}
                         }),            
-        ])
+        ]),
+        html.Div([
+        dcc.Markdown("""
+            **Clicked Genes**
+                Genes that were clicked in the volcano plot
+            """),
+            html.Pre(id='click-data', style=styles['pre']),
+        ]),
     ]),
 ])

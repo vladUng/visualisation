@@ -32,8 +32,7 @@ def import_data(base_path):
         ret_dict = {}
         ret_dict["data"] = pd.read_csv(base_path + "TPM_raw.tsv", delimiter="\t")
         ret_dict["data"] = ret_dict["data"].set_index("Sample")
-        ret_dict["metadata"] = pd.read_csv(
-            base_path + "metadata_pca.tsv", delimiter="\t")
+        ret_dict["metadata"] = pd.read_csv(base_path + "metadata_pca.tsv", delimiter="\t")
         print("Finished loading the data in {}".format(time.time()-start_time))
         # TPM and metadata
         return ret_dict
