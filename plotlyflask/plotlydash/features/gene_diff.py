@@ -57,9 +57,11 @@ def draw_volcano(df, fold_changes):
         point_size=8,
         effect_size_line_width=4,
         genomewideline_width=2,
+        annotation="group"
     )
 
     fig = show_selected_genes_vulcano(df, fig)
+    
     fig.update_layout(clickmode='event+select')
     
     return fig
@@ -71,7 +73,6 @@ def show_selected_genes_vulcano(df, fig):
         fig.add_trace(create_gene_trace(df, trace["genes"], name=trace["title"], marker_color=colors[idx]))
 
     return fig
-
 
 def show_selected_genes_pi(df_1, df_2, fig):
     custom_traces = create_custom_traces()
@@ -161,10 +162,14 @@ def draw_pi_plot(df_1, df_2, file_1, file_2):
 
     # Note the genes number may differ and we're setting the index of the DataFrame which has the most genes (i.e. rows)
     #  However, there might be some genes in the second df which are not in the first one. Regardless, we set the nan values to 0 (points will be added to the center)
-    dummy_df = pd.concat([first_df["x"], second_df["y"]], axis=1).fillna(0).reset_index().rename(columns={"index":"genes"})
+    first_df.rename(columns={"group": "comp_1"}, inplace=True)
+    second_df.rename(columns={"group": "comp_2"}, inplace=True)
+
+
+    dummy_df = pd.concat([first_df[["x", "comp_1"]], second_df[["y", "comp_2"]]], axis=1).fillna(0).reset_index().rename(columns={"index":"genes"})
     
     dummy_df["main"] = "PI_plot"
-    fig = px.scatter(dummy_df, x="x", y="y", hover_data=["genes"], color="main", title=title)
+    fig = px.scatter(dummy_df, x="x", y="y", hover_data=["genes", "comp_1", "comp_2"], color="main", title=title)
 
 
     fig.add_shape(type='line',
