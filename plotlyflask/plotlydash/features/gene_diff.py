@@ -2,11 +2,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
 import dash_bio as dashbio
-import plotly
 import plotly.express as px
-
-import plotly.graph_objects as go
-
 
 from plotlyflask.plotlydash.main import menu
 from plotlyflask.plotlydash.main import app as dash_app
@@ -17,7 +13,6 @@ import pandas as pd
 from os import path, walk
 import time
 
-import json
 
 
 styles = {
@@ -28,8 +23,6 @@ styles = {
 }
 
 ##### Functions for .tsv handling #####
-
-
 def import_data(fullPath):
     start_time = time.time()
     if path.exists(fullPath):
@@ -40,8 +33,8 @@ def import_data(fullPath):
     else:
         return None
 
-
-def draw_volcano(df, fold_changes):
+# Graphs
+def draw_volcano(df, fold_changes, selected_data, selected_genes):
     fig = dashbio.VolcanoPlot(
         dataframe=df,
         effect_size="fold_change",
@@ -59,11 +52,36 @@ def draw_volcano(df, fold_changes):
         genomewideline_width=2,
         annotation="group"
     )
+    
+    x_col = "fold_change"
+    y_col = "-log10(q)"
+
+    # show the selected points
+    if selected_data:
+        ranges = selected_data['range']
+        selection_bounds = {'x0': ranges['x'][0], 'x1': ranges['x'][1],
+                            'y0': ranges['y'][0], 'y1': ranges['y'][1]}
+
+        selected_idxs = df[df["genes"].isin(selected_genes)].index
+
+        fig.update_traces(selectedpoints=selected_idxs,
+            mode='markers', 
+            unselected={'marker': { 'opacity': 0.3 }
+            })
+    else:
+        selection_bounds = {'x0': np.min(df[x_col] -2), 'x1': np.max(df[x_col] + 2),
+                            'y0': np.min(df[y_col]-2), 'y1': np.max(df[y_col]) + 2}
 
     fig = show_selected_genes_vulcano(df, fig)
+
+    fig.update_traces(customdata=df["genes"])
+    fig.update_layout(dragmode='select')
+
+    fig.add_shape(dict({'type': 'rect',
+                        'line': { 'width': 1, 'dash': 'dot', 'color': 'darkgrey' } },
+                       **selection_bounds))
     
-    fig.update_layout(clickmode='event+select')
-    
+
     return fig
 
 def show_selected_genes_vulcano(df, fig):
@@ -121,7 +139,6 @@ def create_custom_traces():
     
     return custom_traces
 
-
 def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", marker_size=8, df_2=None): 
 
     selected_df = df[df["genes"].isin(genes)]
@@ -141,7 +158,6 @@ def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", mar
     trace = dict(type='scatter', x=x, y= y,  showlegend=True, marker=markers, text=selected_df["genes"], mode="markers", name=name)
 
     return trace
-
 
 def draw_pi_plot(df_1, df_2, file_1, file_2):
 
@@ -189,6 +205,7 @@ def draw_pi_plot(df_1, df_2, file_1, file_2):
 
     return fig
 
+# HTML
 def create_dropdown(files, plot_type, text="Select a file"):
 
     return html.Div(children=[
@@ -228,20 +245,28 @@ def create_config_piplot(files):
         html.Button(id='plot-pi', n_clicks=0, children='Plot π plot'),
     ])
 
+# Callbacks
 def init_callbacks(dash_app):
     @dash_app.callback(
-        [Output("volcano-text-output", "children"),
+        [Output("volcano-text-output", "children"), Output('click-data', 'children'),
          Output('figure-volcano', "figure")],
         [Input('plot-volcano', 'n_clicks'),
-         Input('default-volcanoplot-input', 'value')],
+         Input('default-volcanoplot-input', 'value')],  Input('figure-volcano', 'selectedData'),
         [State("select-file-volcano", "value")]
     )
-    def plotVolcano(btn, fold_changes, filename):
+    def plotVolcano(btn, fold_changes, selected_data, filename):
         ret_string = ""
+        ret_genes = []
+        selected_genes = []
+
         data_dict = import_data("data/VolcanoPlots/" + filename)
 
-        figure = draw_volcano(data_dict["data"], fold_changes)
-        return ret_string, figure
+        selected_genes = gene_hyperlinks(selected_data, ret_genes)
+
+        figure = draw_volcano(data_dict["data"], fold_changes, selected_data, selected_genes)
+        return ret_string, ret_genes, figure
+                    
+        return selected_genes
 
     @dash_app.callback(
     [Output("pi-plot-text-output", "children"),
@@ -256,20 +281,6 @@ def init_callbacks(dash_app):
 
         figure = draw_pi_plot(data_dict_1["data"], data_dict_2["data"], file_1, file_2)
         return ret_string, figure
-
-    @dash_app.callback(
-        Output('click-data', 'children'),
-        Input('figure-volcano', 'clickData'))
-    def display_click_data(clickData):
-        if clickData is not None:
-            # jsonText = clickData["points"][0]["text"]
-
-            jsonText = [point["text"] for point in clickData["points"] ]
-
-            return jsonText
-        else: 
-            return "No points selected"
-
 
 
 files = next(walk("data/VolcanoPlots/"), (None, None, []))[2]
