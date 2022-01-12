@@ -72,8 +72,8 @@ def draw_volcano(df, fold_changes, selected_data):
             unselected={'marker': { 'opacity': 0.3 }
             })
     else:
-        selection_bounds = {'x0': np.min(df[x_col] -2), 'x1': np.max(df[x_col] + 2),
-                            'y0': np.min(df[y_col]-2), 'y1': np.max(df[y_col]) + 2}
+        selection_bounds = {'x0': np.min(df[x_col] - 2), 'x1': np.max(df[x_col] + 2),
+                            'y0': np.min(df[y_col] - 2), 'y1': np.max(df[y_col]) + 2}
 
     fig = show_selected_genes_vulcano(df, fig)
 
@@ -98,11 +98,8 @@ def show_selected_genes_vulcano(df, fig):
 def show_selected_genes_pi(df_1, df_2, fig):
     custom_traces = create_custom_traces()
     colors =  px.colors.qualitative.Vivid
-    colors_2 = px.colors.qualitative.Safe
     for idx, trace in enumerate(custom_traces): 
         fig.add_trace(create_gene_trace(df_1, trace["genes"], name=trace["title"], marker_color=colors[idx], df_2=df_2))
-
-        # fig.add_trace(create_gene_trace(df_2, trace["genes"], name=trace["title"], marker_color=colors[idx], volcano_plot=False, x_axis=False))
 
     return fig 
 
@@ -162,7 +159,7 @@ def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", mar
 
     return trace
 
-def draw_pi_plot(df_1, df_2, file_1, file_2):
+def draw_pi_plot(df_1, df_2, file_1, file_2, selected_data):
 
     title = ""
     # Decide which is bigger, the number of genes may differ
@@ -189,9 +186,37 @@ def draw_pi_plot(df_1, df_2, file_1, file_2):
     dummy_df["main"] = "PI_plot"
     fig = px.scatter(dummy_df, x="x", y="y", hover_data=["genes", "comp_1", "comp_2"], color="main", title=title)
 
+    x_col = "x"
+    y_col = "y"
+
+    # Add the selected points
+    if selected_data:
+        ranges = selected_data['range']
+        selection_bounds = {'x0': ranges['x'][0], 'x1': ranges['x'][1],
+                            'y0': ranges['y'][0], 'y1': ranges['y'][1]}
+
+        # There is something weird going on with indexes
+        selected_genes = [gene["customdata"]  for gene in selected_data["points"]]
+
+        selected_idxs = dummy_df[dummy_df["genes"].isin(selected_genes)].index
+
+        fig.update_traces(selectedpoints=selected_idxs,
+            mode='markers', 
+            unselected={'marker': { 'opacity': 0.3 }
+            })
+    else:
+        offset = 10
+        selection_bounds = {'x0': np.min(dummy_df[x_col] - offset), 'x1': np.max(dummy_df[x_col] + offset),
+                            'y0': np.min(dummy_df[y_col] - offset), 'y1': np.max(dummy_df[y_col]) + offset}
 
     fig = add_anottations(first_df, second_df, dummy_df, fig)
     fig = show_selected_genes_pi(first_df.reset_index(), second_df.reset_index(), fig)
+
+    fig.update_layout(dragmode='select')
+    fig.update_traces(customdata=dummy_df["genes"])
+    fig.add_shape(dict({'type': 'rect',
+                        'line': { 'width': 1, 'dash': 'dot', 'color': 'darkgrey' } },
+                       **selection_bounds))
 
     return fig
 
@@ -296,10 +321,14 @@ def create_urls(selected_data):
         selected_genes = []
         for point in selected_data["points"]:
             gene = ""
-            if "<br>" in point["text"]:
-                gene = point["text"].split("<br>")[1].split(" ")[1] 
+            if "text" in point.keys():
+                if "<br>" in point["text"]:
+                    gene = point["text"].split("<br>")[1].split(" ")[1] 
+                else:
+                    gene = point["text"]
             else:
-               gene = point["text"]
+                # for pi plot
+                gene = point["customdata"]
 
             selected_genes.append(gene)
 
@@ -316,7 +345,8 @@ def init_callbacks(dash_app):
         [Output("volcano-text-output", "children"), Output('click-data', 'children'),
          Output('figure-volcano', "figure")],
         [Input('plot-volcano', 'n_clicks'),
-         Input('default-volcanoplot-input', 'value')],  Input('figure-volcano', 'selectedData'),
+         Input('default-volcanoplot-input', 'value')], 
+          Input('figure-volcano', 'selectedData'),
         [State("select-file-volcano", "value")]
     )
     def plotVolcano(btn, fold_changes, selected_data, filename):
@@ -329,21 +359,21 @@ def init_callbacks(dash_app):
         figure = draw_volcano(data_dict["data"], fold_changes, selected_data)
         return ret_string, ret_genes, figure
                     
-        # return selected_genes
-
     @dash_app.callback(
     [Output("pi-plot-text-output", "children"),
-        Output('figure-pi-plot', "figure")],
-    [Input('plot-pi', 'n_clicks'),  Input('plot-pi', 'selectedData')],
+        Output('figure-pi-plot', "figure"), Output('click-data-pi', 'children')],
+    [Input('plot-pi', 'n_clicks'),  Input('figure-pi-plot', 'selectedData')],
     [State("select-file-pi-1", "value"), State("select-file-pi-2", "value")]
     )
-    def plotPi(btn, file_1, file_2):
+    def plotPi(btn, selected_data, file_1, file_2):
         ret_string = ""
         data_dict_1 = import_data("data/VolcanoPlots/" + file_1)
         data_dict_2 = import_data("data/VolcanoPlots/" + file_2)
 
-        figure = draw_pi_plot(data_dict_1["data"], data_dict_2["data"], file_1, file_2)
-        return ret_string, figure
+        ret_genes = create_urls(selected_data) 
+
+        figure = draw_pi_plot(data_dict_1["data"], data_dict_2["data"], file_1, file_2, selected_data)
+        return ret_string, figure, ret_genes
 
 
 files = next(walk("data/VolcanoPlots/"), (None, None, []))[2]
@@ -379,11 +409,16 @@ layout = html.Div(children=[
                         "layout": {"title": "No π plot displayed", "height": 800}
                         }),            
         ]),
-        html.Div([
-        dcc.Markdown("""
-            **Clicked Genes**
-                Genes that were clicked in the volcano plot
-            """),
+        html.Div(style={"column-count": "1"}, children = [
+            dcc.Markdown("""
+                **Pi Plot selected Genes**
+                    Genes that were clicked in the pi plot
+                """),
+            html.Pre(id='click-data-pi', style=styles['pre']),
+            dcc.Markdown("""
+                **Volcano selected Genes**
+                    Genes that were clicked in the volcano plot
+                """),
             html.Pre(id='click-data', style=styles['pre']),
         ]),
         html.Div(style={"height":"200px"})
