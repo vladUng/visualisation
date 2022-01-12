@@ -184,13 +184,19 @@ def draw_pi_plot(df_1, df_2, file_1, file_2):
     first_df.rename(columns={"group": "comp_1"}, inplace=True)
     second_df.rename(columns={"group": "comp_2"}, inplace=True)
 
-
     dummy_df = pd.concat([first_df[["x", "comp_1"]], second_df[["y", "comp_2"]]], axis=1).fillna(0).reset_index().rename(columns={"index":"genes"})
     
     dummy_df["main"] = "PI_plot"
     fig = px.scatter(dummy_df, x="x", y="y", hover_data=["genes", "comp_1", "comp_2"], color="main", title=title)
 
 
+    fig = add_anottations(first_df, second_df, dummy_df, fig)
+    fig = show_selected_genes_pi(first_df.reset_index(), second_df.reset_index(), fig)
+
+    return fig
+
+def add_anottations(first_df, second_df, dummy_df, fig):
+    offset = 10
     fig.add_shape(type='line',
                     x0=dummy_df["x"].min()*1.5, y0=0,
                     x1=dummy_df["x"].max()*1.5, y1=0,
@@ -204,7 +210,33 @@ def draw_pi_plot(df_1, df_2, file_1, file_2):
                     xref='x',
                     yref='y')
 
-    fig = show_selected_genes_pi(first_df.reset_index(), second_df.reset_index(), fig)
+    fig.add_annotation(showarrow=True,
+                   arrowhead=1,
+                   align = 'right',
+                   x=first_df["x"].max() + offset, y=0,
+                   text=first_df.loc[first_df["x"] == first_df["x"].max()]["comp_1"].values[0],
+                   opacity=0.7)
+
+    fig.add_annotation(showarrow=True,
+                arrowhead=1,
+                align = 'left',
+                x=first_df["x"].min() - offset, y= 0,
+                text=first_df.loc[first_df["x"] == first_df["x"].min()]["comp_1"].values[0],
+                opacity=0.7)
+        
+    fig.add_annotation(showarrow=True,
+                   arrowhead=1,
+                   align = 'right',
+                   y=second_df["y"].max() + offset, x=0,
+                   text=second_df.loc[second_df["y"] == second_df["y"].max()]["comp_2"].values[0],
+                   opacity=0.7)
+
+    fig.add_annotation(showarrow=True,
+                arrowhead=1,
+                align = 'right',
+                y=second_df["y"].min() - offset, x =0,
+                text=second_df.loc[second_df["y"] == second_df["y"].min()]["comp_2"].values[0],
+                opacity=0.7)
 
     return fig
 
@@ -259,13 +291,9 @@ def create_urls(selected_data):
     """
     base_url = "https://www.genecards.org/cgi-bin/carddisp.pl?gene="
     urls = []
-    # for gene in genes:
-    #     urls.append(html.A(gene +", ", href=base_url+gene, target="_blank"))
-    #     # urls.append(base_url + gene)
-
-    # selected_genes = []
 
     if selected_data is not None:
+        selected_genes = []
         for point in selected_data["points"]:
             gene = ""
             if "<br>" in point["text"]:
@@ -273,9 +301,14 @@ def create_urls(selected_data):
             else:
                gene = point["text"]
 
-            urls.append(html.A(gene +", ", href=base_url+gene, target="_blank"))
+            selected_genes.append(gene)
 
-    return list(set(urls))
+        selected_genes = sorted(list(set(selected_genes)))
+        for gene in selected_genes:
+            urls.append(html.A(gene +", ", href=base_url+gene, target="_blank"))
+            urls.append(html.Br())
+
+    return urls
 
 # Callbacks
 def init_callbacks(dash_app):
@@ -290,16 +323,8 @@ def init_callbacks(dash_app):
         ret_string = ""
         ret_genes = []
         data_dict = import_data("data/VolcanoPlots/" + filename)
-
-        # selected_genes = []
-        # if selected_data is not None:
-        #     for point in selected_data["points"]:
-        #         if "<br>" in point["text"]:
-        #             selected_genes.append(point["text"].split("<br>")[1].split(" ")[1] )
-        #         else:
-        #             selected_genes.append(point["text"])
  
-        ret_genes = create_urls(selected_data) #removes duplicates
+        ret_genes = create_urls(selected_data) 
 
         figure = draw_volcano(data_dict["data"], fold_changes, selected_data)
         return ret_string, ret_genes, figure
@@ -309,7 +334,7 @@ def init_callbacks(dash_app):
     @dash_app.callback(
     [Output("pi-plot-text-output", "children"),
         Output('figure-pi-plot', "figure")],
-    [Input('plot-pi', 'n_clicks')],
+    [Input('plot-pi', 'n_clicks'),  Input('plot-pi', 'selectedData')],
     [State("select-file-pi-1", "value"), State("select-file-pi-2", "value")]
     )
     def plotPi(btn, file_1, file_2):
@@ -361,5 +386,6 @@ layout = html.Div(children=[
             """),
             html.Pre(id='click-data', style=styles['pre']),
         ]),
+        html.Div(style={"height":"200px"})
     ]),
 ])
