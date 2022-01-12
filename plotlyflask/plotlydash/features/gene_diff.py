@@ -34,7 +34,7 @@ def import_data(fullPath):
         return None
 
 # Graphs
-def draw_volcano(df, fold_changes, selected_data, selected_genes):
+def draw_volcano(df, fold_changes, selected_data):
     fig = dashbio.VolcanoPlot(
         dataframe=df,
         effect_size="fold_change",
@@ -61,6 +61,9 @@ def draw_volcano(df, fold_changes, selected_data, selected_genes):
         ranges = selected_data['range']
         selection_bounds = {'x0': ranges['x'][0], 'x1': ranges['x'][1],
                             'y0': ranges['y'][0], 'y1': ranges['y'][1]}
+
+        # There is something weird going on with indexes
+        selected_genes = [gene["customdata"]  for gene in selected_data["points"]]
 
         selected_idxs = df[df["genes"].isin(selected_genes)].index
 
@@ -245,6 +248,35 @@ def create_config_piplot(files):
         html.Button(id='plot-pi', n_clicks=0, children='Plot π plot'),
     ])
 
+def create_urls(selected_data):
+    """ For a given list of genes strings generate the gene cards urls
+
+    Args:
+        genes ([String]): List of genes strings
+
+    Returns:
+        [String]: URls of gene cards
+    """
+    base_url = "https://www.genecards.org/cgi-bin/carddisp.pl?gene="
+    urls = []
+    # for gene in genes:
+    #     urls.append(html.A(gene +", ", href=base_url+gene, target="_blank"))
+    #     # urls.append(base_url + gene)
+
+    # selected_genes = []
+
+    if selected_data is not None:
+        for point in selected_data["points"]:
+            gene = ""
+            if "<br>" in point["text"]:
+                gene = point["text"].split("<br>")[1].split(" ")[1] 
+            else:
+               gene = point["text"]
+
+            urls.append(html.A(gene +", ", href=base_url+gene, target="_blank"))
+
+    return list(set(urls))
+
 # Callbacks
 def init_callbacks(dash_app):
     @dash_app.callback(
@@ -257,16 +289,22 @@ def init_callbacks(dash_app):
     def plotVolcano(btn, fold_changes, selected_data, filename):
         ret_string = ""
         ret_genes = []
-        selected_genes = []
-
         data_dict = import_data("data/VolcanoPlots/" + filename)
 
-        selected_genes = gene_hyperlinks(selected_data, ret_genes)
+        # selected_genes = []
+        # if selected_data is not None:
+        #     for point in selected_data["points"]:
+        #         if "<br>" in point["text"]:
+        #             selected_genes.append(point["text"].split("<br>")[1].split(" ")[1] )
+        #         else:
+        #             selected_genes.append(point["text"])
+ 
+        ret_genes = create_urls(selected_data) #removes duplicates
 
-        figure = draw_volcano(data_dict["data"], fold_changes, selected_data, selected_genes)
+        figure = draw_volcano(data_dict["data"], fold_changes, selected_data)
         return ret_string, ret_genes, figure
                     
-        return selected_genes
+        # return selected_genes
 
     @dash_app.callback(
     [Output("pi-plot-text-output", "children"),
