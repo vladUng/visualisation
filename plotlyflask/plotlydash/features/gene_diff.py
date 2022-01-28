@@ -126,6 +126,8 @@ def create_custom_traces():
 
     neural_diff = ["MSI1", "PLEKHG4B", "GNG4", "PEG10", "RND2", "APLP1", "SOX2", "TUBB2B"]
 
+    ryan_genes = ["FGFR3", "EGFR"]
+
     custom_traces = []
     # SB
     custom_traces.append({"genes":ifnq_genes, "title": "SB_IFNQ"})
@@ -136,6 +138,9 @@ def create_custom_traces():
     custom_traces.append({"genes":squamos_markers, "title": "TCGA_squamos"})
     custom_traces.append({"genes":immune_markers, "title": "TCGA_immune"})
     custom_traces.append({"genes":neural_diff, "title": "TCGA_neuroendocrine"})
+
+    custom_traces.append({"genes":ryan_genes, "title": "Ryan's genes"})
+
     
     return custom_traces
 
@@ -196,7 +201,10 @@ def draw_pi_plot(df_1, df_2, file_1, file_2, selected_data):
                             'y0': ranges['y'][0], 'y1': ranges['y'][1]}
 
         # There is something weird going on with indexes
-        selected_genes = [gene["customdata"]  for gene in selected_data["points"]]
+        selected_genes = [gene["customdata"][0] if "customdata" in gene.keys() else gene["text"] for gene in selected_data["points"]]
+
+
+        # [gene for gene in selected_data["points"] if "customdata" not in gene.keys() else geme["text"] ]
 
         selected_idxs = dummy_df[dummy_df["genes"].isin(selected_genes)].index
 
@@ -209,14 +217,21 @@ def draw_pi_plot(df_1, df_2, file_1, file_2, selected_data):
         selection_bounds = {'x0': np.min(dummy_df[x_col] - offset), 'x1': np.max(dummy_df[x_col] + offset),
                             'y0': np.min(dummy_df[y_col] - offset), 'y1': np.max(dummy_df[y_col]) + offset}
 
-    fig = add_anottations(first_df, second_df, dummy_df, fig)
-    fig = show_selected_genes_pi(first_df.reset_index(), second_df.reset_index(), fig)
-
     fig.update_layout(dragmode='select')
-    fig.update_traces(customdata=dummy_df["genes"])
     fig.add_shape(dict({'type': 'rect',
                         'line': { 'width': 1, 'dash': 'dot', 'color': 'darkgrey' } },
                        **selection_bounds))
+
+    fig = add_anottations(first_df, second_df, dummy_df, fig)
+    fig = show_selected_genes_pi(first_df.reset_index(), second_df.reset_index(), fig)
+
+    # fig.update_traces(
+    #     hovertemplate="<br>".join([
+    #         "X: %{x}",
+    #         "Y: %{y}",
+    #         "Genes: %{customdata[1]}",
+    #     ])
+    # )
 
     return fig
 
@@ -328,7 +343,7 @@ def create_urls(selected_data):
                     gene = point["text"]
             else:
                 # for pi plot
-                gene = point["customdata"]
+                gene = point["customdata"][0]
 
             selected_genes.append(gene)
 
