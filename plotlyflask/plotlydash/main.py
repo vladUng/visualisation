@@ -1,7 +1,7 @@
 import dash
 from flask import Flask
-import dash_html_components as html
-import dash_core_components as dcc
+from dash import dcc
+from dash import html
 
 """Construct core Flask application."""
 server = Flask(__name__, instance_relative_config=True)

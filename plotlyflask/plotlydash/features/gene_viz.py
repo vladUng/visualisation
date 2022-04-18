@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import dash
 from dash_table import DataTable
-import dash_html_components as html
-import dash_core_components as dcc
+from dash import dcc
+from dash import html
 from dash.dependencies import Input, Output, State
 import plotly.express as px
 import plotly.graph_objects as go
@@ -731,8 +731,8 @@ def init_callbacks(dash_app, data_dict):
 
 
 # update_all_datasets("data/")
-# data_dict = import_data("data/")
-# init_callbacks(dash_app, data_dict)
+data_dict = import_data("data/")
+init_callbacks(dash_app, data_dict)
 
 # Create Layout
 layout = html.Div(children=[

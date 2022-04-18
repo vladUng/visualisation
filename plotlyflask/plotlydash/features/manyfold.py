@@ -1,8 +1,10 @@
 from plotlyflask.plotlydash.main import app as dash_app
 from plotlyflask.plotlydash.main import menu
-from dash_html_components.Div import Div
-import dash_html_components as html
-import dash_core_components as dcc
+
+from dash import dcc
+from dash import dcc
+from dash import html
+
 from dash.dependencies import Input, Output, State
 import plotly.express as px
 import plotly.graph_objects as go
@@ -15,6 +17,8 @@ import time
 from datetime import datetime
 
 import umap
+
+pd.options.plotting.backend = "plotly"
 
 
 def import_data(base_path):

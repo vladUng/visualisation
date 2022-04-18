@@ -1,5 +1,5 @@
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc
+from dash import html
 from dash.dependencies import Input, Output, State
 import dash_bio as dashbio
 import plotly.express as px
@@ -47,9 +47,10 @@ def draw_volcano(df, fold_changes, selected_data):
         ylabel="-log10(q)",
         xlabel="log2(FC)",
         col='#2A3F5F',
-        point_size=8,
+        point_size=6,
         effect_size_line_width=4,
         genomewideline_width=2,
+        highlight=True, 
         annotation="group"
     )
     
@@ -67,9 +68,7 @@ def draw_volcano(df, fold_changes, selected_data):
 
         selected_idxs = df[df["genes"].isin(selected_genes)].index
 
-        fig.update_traces(selectedpoints=selected_idxs,
-            mode='markers', 
-            unselected={'marker': { 'opacity': 0.3 }
+        fig.update_traces(selectedpoints=selected_idxs, mode='markers', unselected={'marker': { 'opacity': 0.3 }
             })
     else:
         selection_bounds = {'x0': np.min(df[x_col] - 2), 'x1': np.max(df[x_col] + 2),
@@ -77,7 +76,7 @@ def draw_volcano(df, fold_changes, selected_data):
 
     fig = show_selected_genes_vulcano(df, fig)
 
-    fig.update_traces(customdata=df["genes"])
+    fig.update_traces(customdata=df["genes"], textposition="bottom left")
     fig.update_layout(dragmode='select')
 
     fig.add_shape(dict({'type': 'rect',
@@ -126,12 +125,26 @@ def create_custom_traces():
 
     neural_diff = ["MSI1", "PLEKHG4B", "GNG4", "PEG10", "RND2", "APLP1", "SOX2", "TUBB2B"]
 
-    ryan_genes = ["FGFR3", "EGFR"]
+    ryan_genes = ["FGFR3", "EGFR", "TP53"]
+
+    # both ba_sq_inf and mes_like
+    lund_qtc1 = ["FLI1", "FOXP3", "ILKZF1", "IRF4", "IRF8", "RUNX3", "SCML4", "SPI1", "STAT4", "TBX21", "TFEC"]
+    lund_qtc2 = ["AEBP1", "BNC2", "GLI2", "GLIS1", "HIC1", "MSC", "PPRX1", "PPRX2", "TGFB1I1", "TWIST1"]
+    lund_qtc3 = ["EBF1", "HEYL", "LEF1", "MEF2C", "TCF4", "ZEB1", "ZEB2"]
+    lund_qtc8 = ["GATA5", "HAND1", "HAND2", "KLF16"]
+    lund_qtc17 = ["ARID5A", "BATF3", "VENTX"]
+
+    lund_ba_mes = lund_qtc1 + lund_qtc2 + lund_qtc3 + lund_qtc8 + lund_qtc17
+
+    lund_ba_sq = ["BRIP1", "E2F7", "FOXM1", "ZNF367", "IRF1", "SP110", "STAT1"]
+    lund_mes = ["TP53", "RB1", "FGFR3", "ANKHD1", "VIM", "ZEB2"]
+    ba_sq_inf = ["CDH3", "EGFR"]
+    
 
     custom_traces = []
     # SB
     custom_traces.append({"genes":ifnq_genes, "title": "SB_IFNQ"})
-    custom_traces.append({"genes":rarg_genes, "title": "SB_RARG"})
+    # custom_traces.append({"genes":rarg_genes, "title": "SB_RARG"})
     # TCGA
     custom_traces.append({"genes":luminal_markers, "title": "TCGA_luminal"})
     custom_traces.append({"genes":basal_markers, "title": "TCGA_basal"})
@@ -139,12 +152,15 @@ def create_custom_traces():
     custom_traces.append({"genes":immune_markers, "title": "TCGA_immune"})
     custom_traces.append({"genes":neural_diff, "title": "TCGA_neuroendocrine"})
 
-    custom_traces.append({"genes":ryan_genes, "title": "Ryan's genes"})
+    # lund
+    custom_traces.append({"genes":lund_ba_mes, "title": "Mes-like + Ba/sq-inf"})
+    custom_traces.append({"genes":lund_ba_sq, "title": "Lund ba/sq"})
+    custom_traces.append({"genes":lund_mes, "title": "Mes-like"})
+    custom_traces.append({"genes":ba_sq_inf, "title": "Ba/sq-inf"})
 
-    
     return custom_traces
 
-def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", marker_size=8, df_2=None): 
+def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", marker_size=6, df_2=None): 
 
     selected_df = df[df["genes"].isin(genes)]
 
@@ -348,6 +364,16 @@ def create_urls(selected_data):
             selected_genes.append(gene)
 
         selected_genes = sorted(list(set(selected_genes)))
+        urls.append(
+            html.Div([
+                 dcc.Textarea(
+                     id="textarea_id",
+                     value="[\"" + '","'.join(selected_genes) + "\"]", style={"height": 100, "width": 300},
+              ),
+            ])
+        )
+            
+        # html.Div("Copy/paste list of genes: [" + '","'.join(selected_genes) + "]", style={"column-count": "2"}))
         for gene in selected_genes:
             urls.append(html.A(gene +", ", href=base_url+gene, target="_blank"))
             urls.append(html.Br())
@@ -355,7 +381,7 @@ def create_urls(selected_data):
     return urls
 
 # Callbacks
-def init_callbacks(dash_app):
+def init_callbacks(dash_app): 
     @dash_app.callback(
         [Output("volcano-text-output", "children"), Output('click-data', 'children'),
          Output('figure-volcano', "figure")],
@@ -392,6 +418,8 @@ def init_callbacks(dash_app):
 
 
 files = next(walk("data/VolcanoPlots/"), (None, None, []))[2]
+
+files.sort()
 
 if ".DS_Store" in files:
     files.remove(".DS_Store")
