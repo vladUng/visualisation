@@ -229,7 +229,8 @@ def create_config_menu(no_figure, df_meta):
     ])
 
 
-data_dict = import_data("data/UMAP/")
+# data_dict = import_data("/Users/vlad/Documents/Code/York/visualisation/visualisation/data/UMAP/")
+data_dict = import_data("visualisation/data/UMAP/")
 init_callbacks(dash_app, data_dict)
 
 # Create Layout

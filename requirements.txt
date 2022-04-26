@@ -1,11 +1,13 @@
-Flask==2.1.0
+Flask
 python-dotenv
-dash==1.16.1
+dash
+dash-bio
 plotly
 psutil #for exporting images
 pandas
 kaleido
 requests
+umap
 # google-api-python-client
 # google-auth-httplib2 
 # google-auth-oauthlib

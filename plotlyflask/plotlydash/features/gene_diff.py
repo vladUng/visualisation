@@ -64,7 +64,7 @@ def draw_volcano(df, fold_changes, selected_data):
                             'y0': ranges['y'][0], 'y1': ranges['y'][1]}
 
         # There is something weird going on with indexes
-        selected_genes = [gene["customdata"]  for gene in selected_data["points"]]
+        selected_genes = [gene["customdata"] for gene in selected_data["points"]]
 
         selected_idxs = df[df["genes"].isin(selected_genes)].index
 
@@ -176,7 +176,7 @@ def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", mar
 
     markers = {"size": marker_size, "color": selected_df.shape[0] * [marker_color] }
 
-    trace = dict(type='scatter', x=x, y= y,  showlegend=True, marker=markers, text=selected_df["genes"], mode="markers", name=name)
+    trace = dict(type='scatter', x=x, y= y,  showlegend=True, marker=markers, text=selected_df["genes"], mode="markers" , name=name)
 
     return trace
 
@@ -393,7 +393,7 @@ def init_callbacks(dash_app):
     def plotVolcano(btn, fold_changes, selected_data, filename):
         ret_string = ""
         ret_genes = []
-        data_dict = import_data("data/VolcanoPlots/" + filename)
+        data_dict = import_data(DATA_PATH + filename)
  
         ret_genes = create_urls(selected_data) 
 
@@ -408,8 +408,8 @@ def init_callbacks(dash_app):
     )
     def plotPi(btn, selected_data, file_1, file_2):
         ret_string = ""
-        data_dict_1 = import_data("data/VolcanoPlots/" + file_1)
-        data_dict_2 = import_data("data/VolcanoPlots/" + file_2)
+        data_dict_1 = import_data(DATA_PATH + file_1)
+        data_dict_2 = import_data(DATA_PATH + file_2)
 
         ret_genes = create_urls(selected_data) 
 
@@ -417,7 +417,9 @@ def init_callbacks(dash_app):
         return ret_string, figure, ret_genes
 
 
-files = next(walk("data/VolcanoPlots/"), (None, None, []))[2]
+DATA_PATH = "visualisation/data/VolcanoPlots/"
+# files = next(walk("/Users/vlad/Documents/Code/York/visualisation/visualisation/data/VolcanoPlots"), (None, None, []))[2]
+files = next(walk(DATA_PATH), (None, None, []))[2]
 
 files.sort()
 
