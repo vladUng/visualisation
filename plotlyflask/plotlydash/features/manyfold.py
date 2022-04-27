@@ -2,7 +2,6 @@ from plotlyflask.plotlydash.main import app as dash_app
 from plotlyflask.plotlydash.main import menu
 
 from dash import dcc
-from dash import dcc
 from dash import html
 
 from dash.dependencies import Input, Output, State
@@ -14,7 +13,6 @@ import pandas as pd
 
 from os import path, name
 import time
-from datetime import datetime
 
 import umap
 
@@ -230,8 +228,9 @@ def create_config_menu(no_figure, df_meta):
 
 
 # data_dict = import_data("/Users/vlad/Documents/Code/York/visualisation/visualisation/data/UMAP/")
-data_dict = import_data("visualisation/data/UMAP/")
+data_dict = import_data("data/UMAP/")
 init_callbacks(dash_app, data_dict)
+
 
 # Create Layout
 layout = html.Div(children=[

@@ -1,11 +1,12 @@
+from plotlyflask.plotlydash.main import app as dash_app
+from plotlyflask.plotlydash.main import menu
+
 from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output, State
 import dash_bio as dashbio
 import plotly.express as px
 
-from plotlyflask.plotlydash.main import menu
-from plotlyflask.plotlydash.main import app as dash_app
 
 import numpy as np
 import pandas as pd
@@ -13,7 +14,7 @@ import pandas as pd
 from os import path, walk
 import time
 
-
+pd.options.plotting.backend = "plotly"
 
 styles = {
     'pre': {
@@ -34,7 +35,22 @@ def import_data(fullPath):
         return None
 
 # Graphs
-def draw_volcano(df, fold_changes, selected_data):
+def draw_volcano(df, fold_changes, selected_data, selected_genes):
+    """ Drawing the volcano plot
+
+    # There is something weird going on with indexes because we're setting customData to df['genes'].
+    # It can get confusing as the data in df['genes'] will be put in alphabetical order and not correlated with the [x,y] points
+    #  Thus the real value of the genes will be different and is passed through selected_genes
+
+    Args:
+        df (dataframe): _description_
+        fold_changes (dataframe): _description_
+        selected_data (list): _description_
+        selected_genes (list): the list of selected genes
+
+    Returns:
+        fig: figure object from plotly
+    """
     fig = dashbio.VolcanoPlot(
         dataframe=df,
         effect_size="fold_change",
@@ -63,18 +79,15 @@ def draw_volcano(df, fold_changes, selected_data):
         selection_bounds = {'x0': ranges['x'][0], 'x1': ranges['x'][1],
                             'y0': ranges['y'][0], 'y1': ranges['y'][1]}
 
-        # There is something weird going on with indexes
-        selected_genes = [gene["customdata"] for gene in selected_data["points"]]
-
-        selected_idxs = df[df["genes"].isin(selected_genes)].index
-
-        fig.update_traces(selectedpoints=selected_idxs, mode='markers', unselected={'marker': { 'opacity': 0.3 }
-            })
+        # finding the selected point
+        selected_points = [gene["customdata"] for gene in selected_data["points"]]
+        selected_idxs = df[df["genes"].isin(selected_points)].index
+        fig.update_traces(selectedpoints=selected_idxs, mode='markers', unselected={'marker': { 'opacity': 0.3 } })
     else:
         selection_bounds = {'x0': np.min(df[x_col] - 2), 'x1': np.max(df[x_col] + 2),
                             'y0': np.min(df[y_col] - 2), 'y1': np.max(df[y_col]) + 2}
 
-    fig = show_selected_genes_vulcano(df, fig)
+    fig = show_selected_genes_vulcano(df, selected_genes, fig)
 
     fig.update_traces(customdata=df["genes"], textposition="bottom left")
     fig.update_layout(dragmode='select')
@@ -86,34 +99,29 @@ def draw_volcano(df, fold_changes, selected_data):
 
     return fig
 
-def show_selected_genes_vulcano(df, fig):
-    custom_traces = create_custom_traces()
+def show_selected_genes_vulcano(df, selected_genes, fig):
+    custom_traces = create_custom_traces(selected_genes=selected_genes)
     colors =  px.colors.qualitative.Vivid
     for idx, trace in enumerate(custom_traces): 
         fig.add_trace(create_gene_trace(df, trace["genes"], name=trace["title"], marker_color=colors[idx]))
 
     return fig
 
-def show_selected_genes_pi(df_1, df_2, fig):
-    custom_traces = create_custom_traces()
+def show_selected_genes_pi(df_1, df_2, fig, selected_genes):
+    custom_traces = create_custom_traces(selected_genes)
     colors =  px.colors.qualitative.Vivid
     for idx, trace in enumerate(custom_traces): 
         fig.add_trace(create_gene_trace(df_1, trace["genes"], name=trace["title"], marker_color=colors[idx], df_2=df_2))
 
     return fig 
 
-def create_custom_traces():
+def create_custom_traces(selected_genes = None):
 
     ifnq_genes = ['B2M', 'BATF2', 'BTN3A3', 'CD74', 'CIITA', 'CXCL10', 'CXCL9',
        'EPSTI1', 'GBP1', 'GBP4', 'GBP5', 'HAPLN3', 'HLA-DPA1', 'IDO1',
        'IFI30', 'IFI35', 'IFIT3', 'IFITM1', 'IL32', 'IRF1', 'NLRC5',
        'PARP9', 'PSMB8-AS1', 'PSMB9', 'SAMHD1', 'SECTM1', 'STAT1', 'TAP1',
        'TNFSF13B', 'TYMP', 'UBE2L6', 'WARS1', 'ZBP1']
-
-    rarg_genes = ['ADGRF1', 'ALDH3B1', 'ANKRD13D', 'ANXA11', 'B3GNT3', 'BHLHE41',
-       'CAPN1', 'CDK2AP2', 'CIB1', 'CPTP', 'CTSH', 'GALE', 'HSH2D',
-       'MMEL1', 'OAS1', 'PLCD3', 'PNPLA2', 'PRKCD', 'RARG', 'RNPEPL1',
-       'TCIRG1', 'THEM6', 'TNFAIP2', 'UBA7', 'UNC93B1', 'VAMP8', 'VSIG2']
 
     luminal_markers = ["KRT20", "PPARG", "FOXA1", "GATA3", "SNX31", "UPK1A", "UPK2", "FGFR3"]
 
@@ -126,6 +134,10 @@ def create_custom_traces():
     neural_diff = ["MSI1", "PLEKHG4B", "GNG4", "PEG10", "RND2", "APLP1", "SOX2", "TUBB2B"]
 
     ryan_genes = ["FGFR3", "EGFR", "TP53"]
+    rarg_genes = ['ADGRF1', 'ALDH3B1', 'ANKRD13D', 'ANXA11', 'B3GNT3', 'BHLHE41',
+       'CAPN1', 'CDK2AP2', 'CIB1', 'CPTP', 'CTSH', 'GALE', 'HSH2D',
+       'MMEL1', 'OAS1', 'PLCD3', 'PNPLA2', 'PRKCD', 'RARG', 'RNPEPL1',
+       'TCIRG1', 'THEM6', 'TNFAIP2', 'UBA7', 'UNC93B1', 'VAMP8', 'VSIG2']
 
     # both ba_sq_inf and mes_like
     lund_qtc1 = ["FLI1", "FOXP3", "ILKZF1", "IRF4", "IRF8", "RUNX3", "SCML4", "SPI1", "STAT4", "TBX21", "TFEC"]
@@ -142,6 +154,9 @@ def create_custom_traces():
     
 
     custom_traces = []
+    if selected_genes:
+        custom_traces.append({"genes":selected_genes, "title": "Selected genes"})
+
     # SB
     custom_traces.append({"genes":ifnq_genes, "title": "SB_IFNQ"})
     # custom_traces.append({"genes":rarg_genes, "title": "SB_RARG"})
@@ -176,11 +191,11 @@ def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", mar
 
     markers = {"size": marker_size, "color": selected_df.shape[0] * [marker_color] }
 
-    trace = dict(type='scatter', x=x, y= y,  showlegend=True, marker=markers, text=selected_df["genes"], mode="markers" , name=name)
+    trace = dict(type='scatter', x=x, y= y,  showlegend=True, marker=markers, text=selected_df["genes"], mode="markers+text" , name=name)
 
     return trace
 
-def draw_pi_plot(df_1, df_2, file_1, file_2, selected_data):
+def draw_pi_plot(df_1, df_2, file_1, file_2, selected_data, selected_genes):
 
     title = ""
     # Decide which is bigger, the number of genes may differ
@@ -219,7 +234,6 @@ def draw_pi_plot(df_1, df_2, file_1, file_2, selected_data):
         # There is something weird going on with indexes
         selected_genes = [gene["customdata"][0] if "customdata" in gene.keys() else gene["text"] for gene in selected_data["points"]]
 
-
         # [gene for gene in selected_data["points"] if "customdata" not in gene.keys() else geme["text"] ]
 
         selected_idxs = dummy_df[dummy_df["genes"].isin(selected_genes)].index
@@ -239,7 +253,7 @@ def draw_pi_plot(df_1, df_2, file_1, file_2, selected_data):
                        **selection_bounds))
 
     fig = add_anottations(first_df, second_df, dummy_df, fig)
-    fig = show_selected_genes_pi(first_df.reset_index(), second_df.reset_index(), fig)
+    fig = show_selected_genes_pi(first_df.reset_index(), second_df.reset_index(), fig, selected_genes)
 
     # fig.update_traces(
     #     hovertemplate="<br>".join([
@@ -346,10 +360,9 @@ def create_urls(selected_data):
         [String]: URls of gene cards
     """
     base_url = "https://www.genecards.org/cgi-bin/carddisp.pl?gene="
-    urls = []
-
+    urls, selected_genes = [], []
     if selected_data is not None:
-        selected_genes = []
+       
         for point in selected_data["points"]:
             gene = ""
             if "text" in point.keys():
@@ -378,7 +391,8 @@ def create_urls(selected_data):
             urls.append(html.A(gene +", ", href=base_url+gene, target="_blank"))
             urls.append(html.Br())
 
-    return urls
+    return urls, selected_genes
+
 
 # Callbacks
 def init_callbacks(dash_app): 
@@ -392,13 +406,13 @@ def init_callbacks(dash_app):
     )
     def plotVolcano(btn, fold_changes, selected_data, filename):
         ret_string = ""
-        ret_genes = []
+        genes_div, selected_genes = [], []
         data_dict = import_data(DATA_PATH + filename)
  
-        ret_genes = create_urls(selected_data) 
+        genes_div, selected_genes = create_urls(selected_data) 
 
-        figure = draw_volcano(data_dict["data"], fold_changes, selected_data)
-        return ret_string, ret_genes, figure
+        figure = draw_volcano(data_dict["data"], fold_changes, selected_data, selected_genes=selected_genes)
+        return ret_string, genes_div, figure
                     
     @dash_app.callback(
     [Output("pi-plot-text-output", "children"),
@@ -411,13 +425,13 @@ def init_callbacks(dash_app):
         data_dict_1 = import_data(DATA_PATH + file_1)
         data_dict_2 = import_data(DATA_PATH + file_2)
 
-        ret_genes = create_urls(selected_data) 
+        genes_div, selected_genes = create_urls(selected_data) 
 
-        figure = draw_pi_plot(data_dict_1["data"], data_dict_2["data"], file_1, file_2, selected_data)
-        return ret_string, figure, ret_genes
+        figure = draw_pi_plot(data_dict_1["data"], data_dict_2["data"], file_1, file_2, selected_data, selected_genes=selected_genes)
+        return ret_string, figure, genes_div
 
 
-DATA_PATH = "visualisation/data/VolcanoPlots/"
+DATA_PATH = "data/VolcanoPlots/"
 # files = next(walk("/Users/vlad/Documents/Code/York/visualisation/visualisation/data/VolcanoPlots"), (None, None, []))[2]
 files = next(walk(DATA_PATH), (None, None, []))[2]
 
