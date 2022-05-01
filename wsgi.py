@@ -12,7 +12,7 @@ from plotlyflask.plotlydash.main import app
 
 from plotlyflask.plotlydash.features import gene_diff as gf
 # from plotlyflask.plotlydash.features import gene_viz as gv
-from plotlyflask.plotlydash.features import manyfold as mf
+# from plotlyflask.plotlydash.features import manyfold as mf
 
 
 index_page = html.Div([
@@ -39,8 +39,8 @@ def display_page(pathname):
     # el
     if pathname == '/gene-diff':
         return gf.layout
-    elif pathname == '/manyfold':
-        return mf.layout
+    # elif pathname == '/manyfold':
+    #     return mf.layout
     else:
         return index_page
 

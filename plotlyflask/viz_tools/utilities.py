@@ -12,7 +12,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
-import matplotlib.pyplot as plt
 from scipy.cluster.hierarchy import dendrogram
 
 from scipy.spatial.distance import pdist, squareform
@@ -36,7 +35,7 @@ import time
 import random
 
 from collections import Counter
-from yellowbrick.cluster import KElbowVisualizer
+# from yellowbrick.cluster import KElbowVisualizer
 
 
 ################ Utilities functions ################
@@ -57,27 +56,31 @@ def ret_diff_samples(samples_to_remove, all_samples):
             selected_samples.append(elem)
     return selected_samples
 
-def filter_data(df, th, no_expressed=3):
+def filter_data(df, th, at_least_good_cols=3, idx_cols=["genes"]):
     """ Filter a given DataFrame by getting removing of the rows that have elements <= threshold.
 
     Args:
         df ([DataFrame]): The DataFrame from where we have to filter the data. This is has the genes as columns and samples as rows
-        th ([float]): Threshold of the unexpressed genes
-        no_expressed (int, optional): [description]. Defaults to 3.
+        th ([float]): Threshold value of the unexpressed genes
+        at_least_good_cols (int, optional): [The number of samples that fulfill the conditions]. Defaults to 3.
 
     Returns:
         [DataFrame]: DataFrame
     """
     # eliminating the first column
-    df_prcsd = df.drop(['genes'], axis=1)
+    df_prcsd = df.drop(idx_cols, axis=1)
     # compute the selected genes
-    selected_genes_idxs = df_prcsd[df_prcsd >= th].dropna(thresh=no_expressed).index.values
+    selected_genes_idxs = df_prcsd[df_prcsd >= th].dropna(thresh=at_least_good_cols).index.values
     selected_genes = df_prcsd.iloc[selected_genes_idxs]
     # add the genes names back
-    selected_genes.insert(0, "genes", df.loc[selected_genes_idxs, "genes"])
+    cols = [df.loc[selected_genes_idxs, idx_col] for idx_col in idx_cols]
+    cols.append(selected_genes)
+    selected_genes = pd.concat(cols, axis=1)
+
     # reset indexes
     selected_genes.reset_index(drop=True, inplace=True)
     return selected_genes
+
 
 def add_prcsd_metdata(df, df_meta):
     """ Adds to a df metadata columns with information such as TER avg, std, tissue type etc.
@@ -192,6 +195,52 @@ def feature_scalling(df, selected_features, scaleType="standard_transpose"):
     elif scaleType == "max":
         scalled = Normalizer(norm='max').fit_transform(dummy_df.values)
     return pd.DataFrame(scalled)
+
+def select_genes(tcga_tpm_df, no_genes = 3347, relative_selection = True):
+    """
+     It selects the most relative varied genes in the given DataFrame for the given number
+
+    Args:
+        tcga_tpm_df ([Dataframe]): The dataframe from where to select
+        no_genes_selected (int, optional): [Genes to select]. Defaults to 3347.
+
+    Returns:
+        [type]: [description]
+    """
+    # dummy_df = pd.concat([pd.DataFrame(tcga_tpm_df["genes"]), pd.DataFrame(np.log2(tcga_tpm_df.iloc[:, 1:] + 1))], axis=1)
+    dummy_df = np.log2(tcga_tpm_df.set_index("genes") + 1).reset_index()
+
+    # remove all the genes w/ that have a lower expression value from `th` in `>10%` across the samples
+    dummy_df = filter_data(dummy_df, th=np.log2(1.5), at_least_good_cols=dummy_df.shape[1]*0.9, idx_cols=["genes"])
+
+    # acros samples
+    print("####### Gene selection, num genes: {} #######".format(no_genes))
+    if relative_selection:
+        print("The genes selected by the highest standard deviation/median ration. So we choose the genes with the highest relative variance.")
+        dummy_df["std"] = dummy_df.std(axis=1) / dummy_df.median(axis=1)
+    else:
+        print("The genes selected by the highest standard deviation; approached used by Robertson et al.")
+        dummy_df["std"] = dummy_df.std(axis=1)
+
+    most_varied_genes = dummy_df.sort_values(by="std", ascending=False).iloc[:no_genes]["genes"]
+    return most_varied_genes
+
+def create_map_cols(tcga_tpm_df):
+    """
+     Remove the -01B and -01A - this needs to be run only once
+
+    Args:
+        tcga_tpm_df ([DataFrame]): where to remove
+
+    Returns:
+        [Dict]: Dictionary of the old vs new col name
+    """
+    mapping_cols = {}
+    mapping_cols["genes"] = "genes"
+    for col in tcga_tpm_df.columns.values[1:]:
+        mapping_cols[col] = "-".join(col.split("-")[:-1])
+    return mapping_cols
+
 
 ################ PCA, elbow method, metrics, functions ################
 
@@ -418,38 +467,6 @@ def draw_heatmap(df, fullpath, name, save):
     if save:
         save_fig(fullpath + "/%s" % (name), fig)
 
-def gmm_selection(data):
-    """ 
-    This function is an adaptation of the Gaussian Mixture Module (GMM) selection from the scikit-learn documentation https://scikit-learn.org/stable/auto_examples/mixture/plot_gmm_selection.html#sphx-glr-auto-examples-mixture-plot-gmm-selection-py. It received the differentiated DataFrame samples and returns the (information-theoretic criteria) bic scores and the best GMM model.
-
-    This experiment it's both computational and time expensive and it's recommend it to save the results in a file w/ pickle library for future references.
-
-    Use plot_gmm_selection for plotting the bic scores
-
-    Args:
-        data ([DataFrame]): Sample x Genes. It shouldn't contain any other columns
-
-    Returns:
-        [list, gmm_model]: Returns the list of bic scores and the best gaussian model mixture for the given dataset.
-    """
-    lowest_bic, bic = np.infty, []
-    n_components_range = range(1, 7)
-    # types of the gaussian mixture models
-    cv_types = ['spherical', 'tied', 'diag', 'full']
-    for cv_type in cv_types:
-        for n_components in n_components_range:
-            start_time = time.time()
-            print("\n########## GMM with cv_type: {}, n_comp {} ".format(cv_type, n_components))
-            # Fit a Gaussian mixture with EM
-            gmm = mixture.GaussianMixture(n_components=n_components, covariance_type=cv_type, verbose=1)
-            gmm.fit(data)
-            bic.append(gmm.bic(data))
-            if bic[-1] < lowest_bic:
-                lowest_bic = bic[-1]
-                best_gmm = gmm
-            print("########## Finished in {} ".format(time.time()-start_time))
-
-    return bic, best_gmm
 
 def clustering_methods(datasets, default_base, samples, selected_clusters=None):
     """  This function is the core of applying different clustering methods to a dataset. It can run different experiments with different datasets and configuration for the algorithms. It's a modification of the scikit-learn [blogpost](https://scikit-learn.org/stable/modules/clustering.html). The following clusters are supported (name, id):
@@ -692,50 +709,6 @@ def trace_3d(df, colours_pool, title, x_axis, y_axis, z_axis, hover_cols=None, d
            mode=mode_markers, text=text_list, textposition=marker_text_position)
     return trace
 
-def plot_gmm_selection(bic):
-    """ 
-        This is used in conjucation with gmm_selection to plot the bic results.
-
-    Args:
-        bic ([int]): The list of scores from the gmm_selection
-    """
-
-    n_components_range = range(1, 7)
-    cv_types = ['spherical', 'tied', 'diag', 'full']
-    bic = np.array(bic)
-    color_iter = itertools.cycle(['navy', 'turquoise', 'cornflowerblue', 'darkorange'])
-    bars = []
-
-    # Plot the BIC scores
-    fig, (ax1, ax2, ax3) = plt.subplots(1,3, sharex = True, figsize=(11, 4), dpi=100)
-    fig.suptitle('Gaussian Mixture Models BIC Score')
-
-    for i, (cv_type, color) in enumerate(zip(cv_types, color_iter)):
-        xpos = np.array(n_components_range) + .2 * (i - 2)
-        bars.append(ax1.bar(xpos, bic[i * len(n_components_range):
-                            (i + 1) * len(n_components_range)],
-                            width=.2, color=color))
-        if cv_type == "diag" or cv_type == "tied":
-            ax2.bar(xpos, bic[i * len(n_components_range):
-                        (i + 1) * len(n_components_range)],
-                        width=.2, color=color)
-
-            if cv_type == "diag":
-                ax3.bar(xpos, bic[i * len(n_components_range):
-                        (i + 1) * len(n_components_range)],
-                        width=.2, color=color)
-
-    fig.tight_layout(pad=2.2)
-    plt.xticks(n_components_range)
-
-    ax1.title.set_text("All")
-    ax2.title.set_text("Diag & Tied")
-    ax3.title.set_text("Diag")
-
-    fig.legend([b[0] for b in bars], cv_types)
-
-    plt.xlabel("Number of components")
-    plt.show()
 
 def plot_clusters(df, plot_cols, x_label, y_label, colours_pool, exp_name, hover_data=None, marker_text=None, marker_text_position = None):
     """ Function that plots the results from the clustering methods. It can received any number of columns values strings and it will display 3 on a row. This means that it will always display plots with 3 columns

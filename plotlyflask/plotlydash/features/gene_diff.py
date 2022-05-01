@@ -6,13 +6,15 @@ from dash import html
 from dash.dependencies import Input, Output, State
 import dash_bio as dashbio
 import plotly.express as px
-
+import plotly.graph_objects as go
 
 import numpy as np
 import pandas as pd
 
 from os import path, walk
 import time
+
+from plotlyflask.viz_tools import scatter_plot as sp
 
 pd.options.plotting.backend = "plotly"
 
@@ -226,6 +228,99 @@ def add_anottations(first_df, second_df, dummy_df, fig):
     return fig
 
 ### Scatter Plot
+# def draw_scatter_plot(df, selected_data, filename):
+def plt_fc_lines(fig, df, fc_values):
+
+    max_value = round(df[df.columns.values[1:-1]].max().max())
+
+    colours = ["Black", "Green", "goldenrod", "Red", "orange", "Green", "Purple"]
+    line_type = [None, None, "dot", "dash", "dash"]
+    for value in fc_values:
+
+        if value:
+            color = colours[value]
+        else:
+            color = "Black"
+
+        line_dict = dict(color=color, width=3,  dash=line_type[value])
+
+        fig.add_shape(type='line',
+                x0=value, y0=0,
+                x1=max_value, y1=max_value-value,
+                line=line_dict,
+                xref='x',yref='y', name="log2(FC)={}".format(value))
+
+        if value:
+            color = colours[value]
+        else:
+            color = "Black"
+
+        line_dict = dict(color=color, width=3,  dash=line_type[value])
+
+        fig.add_shape(type='line',
+                x0=0, y0=value,
+                x1=max_value-value+1, y1=max_value+1,
+                line=line_dict,
+                xref='x',yref='y', name="log2(FC)={}".format(value))
+
+    return fig
+
+def plt_scatter(df, selected_points, known_markers=False):
+
+    clusters = df.columns[1:]
+    fig = px.scatter(df, x=clusters[0], y=clusters[1], hover_data=["genes", "FC"], color="sig",  color_discrete_sequence=['#636EFA', "grey", '#EF553B'])
+
+    fig = plt_fc_lines(fig, df, fc_values = [0, 1, 2, 4])
+
+
+    if not selected_points.empty:
+        fig.add_trace(go.Scatter(x=selected_points[clusters[0]], y=selected_points[clusters[1]],
+                                 mode="markers+text", text=selected_points["genes"], hoverinfo='all', textposition="top right", name="Selected Points"))
+
+    if known_markers:
+        custom_traces = create_custom_traces()
+        colors =  px.colors.qualitative.Vivid
+        marker_size = 6
+        for idx, trace in enumerate(custom_traces): 
+            selected_df = df[df["genes"].isin(trace["genes"])]
+
+            markers = {"size": marker_size, "color": selected_df.shape[0] * [colors[idx]] }
+            trace = dict(type='scatter', x=selected_df[clusters[0]], y=selected_df[clusters[1]],  showlegend=True, marker=markers, 
+                            text=selected_df["genes"], mode="markers+text" , name=trace["title"],  textposition="top right")
+
+            fig.add_trace(trace)
+
+
+    fig.update_layout(
+        xaxis = dict(
+            tickmode = 'array',
+            tickvals = np.log2([1, 10, 100, 1000, 10000]),
+            ticktext = ["0", "1", "10", "100", "1000", "10000"]
+        ),
+        yaxis = dict(
+            tickmode = 'array',
+            tickvals = np.log2([1, 10, 100, 1000, 10000]),
+            ticktext = ["0", "1", "10", "100", "1000", "10000"]
+        )
+    )
+    
+    return fig
+
+def draw_scatter(filename, tcga_tpm_df, df, selected_data, selected_genes):
+    exp = "_".join(filename.split("_")[:-2])
+    fold_change, _ = sp.prc_fc_comp(tcga_tpm_df, df, exp, drop_outliers=False)
+
+    relevant_genes = ["ALDH3B2","AQP3","BARX2","C10orf99","CAPNS2","CLCA2","CLCA4","DSG3","DSP","FAM110C","FAT2","FGFBP1","FGFR3","GJB2","GJB5","GJB6","GPX2","GRHL1","HES2","IL20RB","IRF6","IVL","KLK11","KRT13","KRT16","KRT5","KRT6A","LAD1","LRATD1","LYPD3","MIR205HG","NECTIN4","PERP","PGLYRP3","PKP1","RHCG","RHOV","SDC1","SERPINB3","SERPINB4","SERPINB5","SLPI","SOX15","SPRR1A","SPRR1B","SPRR2A","SPRR2D","TMPRSS4","TP63","ZNF750"]
+
+    looked_up_genes_cluster_2 = ["S100A2", "S100A8", "S100A9", "HSPB1"]
+
+    
+    selected_points = fold_change[fold_change["genes"].isin(selected_genes)]
+
+    fig = plt_scatter(fold_change, selected_points, True)
+
+    return fig
+
 
 ### Common plotting
 def create_custom_traces(selected_genes = None):
@@ -393,6 +488,9 @@ def create_urls(selected_data):
 
 # Callbacks
 def init_callbacks(dash_app): 
+
+    tcga_tpm_df, selected_genes = sp.get_tpms_df()
+
     @dash_app.callback(
         [Output("volcano-text-output", "children"), Output('click-data', 'children'),
          Output('figure-volcano', "figure"), Output("figure-scatter", "figure")],
@@ -409,7 +507,10 @@ def init_callbacks(dash_app):
         genes_div, selected_genes = create_urls(selected_data) 
 
         figure = draw_volcano(data_dict["data"], fold_changes, selected_data, selected_genes=selected_genes)
-        return ret_string, genes_div, figure, figure
+
+        scatter = draw_scatter(filename, tcga_tpm_df, data_dict["data"], selected_data, selected_genes)
+
+        return ret_string, genes_div, figure, scatter
                     
     @dash_app.callback(
     [Output("pi-plot-text-output", "children"),
@@ -488,3 +589,6 @@ layout = html.Div(children=[
         html.Div(style={"height":"200px"})
     ]),
 ])
+
+
+

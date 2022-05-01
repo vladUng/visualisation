@@ -11,7 +11,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
-            "justMyCode": false
+            "justMyCode": false,
+            "env": {"PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "2"}
         }
     ]
 }
