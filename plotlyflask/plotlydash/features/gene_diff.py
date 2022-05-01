@@ -15,6 +15,7 @@ from os import path, walk
 import time
 
 from plotlyflask.viz_tools import scatter_plot as sp
+from plotlyflask.viz_tools import utilities
 
 pd.options.plotting.backend = "plotly"
 
@@ -306,15 +307,15 @@ def plt_scatter(df, selected_points, known_markers=False):
     
     return fig
 
-def draw_scatter(filename, tcga_tpm_df, df, selected_data, selected_genes):
+def draw_scatter(filename, tcga_tpm_df, df, mapping_cols, selected_data, selected_genes):
     exp = "_".join(filename.split("_")[:-2])
-    fold_change, _ = sp.prc_fc_comp(tcga_tpm_df, df, exp, drop_outliers=False)
+    fold_change, _ = sp.prc_fc_comp(tcga_tpm_df, df, exp, mapping_cols, drop_outliers=False)
 
     relevant_genes = ["ALDH3B2","AQP3","BARX2","C10orf99","CAPNS2","CLCA2","CLCA4","DSG3","DSP","FAM110C","FAT2","FGFBP1","FGFR3","GJB2","GJB5","GJB6","GPX2","GRHL1","HES2","IL20RB","IRF6","IVL","KLK11","KRT13","KRT16","KRT5","KRT6A","LAD1","LRATD1","LYPD3","MIR205HG","NECTIN4","PERP","PGLYRP3","PKP1","RHCG","RHOV","SDC1","SERPINB3","SERPINB4","SERPINB5","SLPI","SOX15","SPRR1A","SPRR1B","SPRR2A","SPRR2D","TMPRSS4","TP63","ZNF750"]
 
     looked_up_genes_cluster_2 = ["S100A2", "S100A8", "S100A9", "HSPB1"]
 
-    
+
     selected_points = fold_change[fold_change["genes"].isin(selected_genes)]
 
     fig = plt_scatter(fold_change, selected_points, True)
@@ -489,7 +490,13 @@ def create_urls(selected_data):
 # Callbacks
 def init_callbacks(dash_app): 
 
-    tcga_tpm_df, selected_genes = sp.get_tpms_df()
+    # for scatter
+    tcga_tpm_df, _ = sp.get_tpms_df()
+    mapping_cols = utilities.create_map_cols(tcga_tpm_df)
+
+    # optimisation for volcano
+    global prev_filename, data_dict 
+    prev_filename = ""
 
     @dash_app.callback(
         [Output("volcano-text-output", "children"), Output('click-data', 'children'),
@@ -502,15 +509,17 @@ def init_callbacks(dash_app):
     def plotVolcano(btn, fold_changes, selected_data, filename):
         ret_string = ""
         genes_div, selected_genes = [], []
-        data_dict = import_data(DATA_PATH + filename)
+        global prev_filename, data_dict
+        if prev_filename != filename:
+            data_dict = import_data(DATA_PATH + filename)
+            prev_filename = filename
  
         genes_div, selected_genes = create_urls(selected_data) 
 
-        figure = draw_volcano(data_dict["data"], fold_changes, selected_data, selected_genes=selected_genes)
+        vulcano = draw_volcano(data_dict["data"], fold_changes, selected_data, selected_genes=selected_genes)
+        scatter = draw_scatter(filename, tcga_tpm_df, data_dict["data"], mapping_cols, selected_data, selected_genes)
 
-        scatter = draw_scatter(filename, tcga_tpm_df, data_dict["data"], selected_data, selected_genes)
-
-        return ret_string, genes_div, figure, scatter
+        return ret_string, genes_div, vulcano, scatter
                     
     @dash_app.callback(
     [Output("pi-plot-text-output", "children"),

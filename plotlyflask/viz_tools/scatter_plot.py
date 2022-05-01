@@ -9,6 +9,7 @@ base_path_data = "/Users/vlad/Documents/Code/York/BU_clustering/data/TCGA/"
 
 info_path = "/Users/vlad/Documents/Code/York/visualisation/visualisation/data/ScatterPlot/infoFiles/"
 
+
 def get_tpms_df():
     tcga_tpm_df = pd.read_csv(base_path_data + "Remap/TCGA-BLCA_gc38_filtered-remap_TPMs.tsv", sep="\t")
     tcga_metadata_df = pd.read_csv(base_path_data + "metadata_tcga.csv")
@@ -30,14 +31,14 @@ def get_tpms_df():
     return tcga_tpm_df, selected_genes
 
 def significant_genes (row, labels):
-   if row['FC'] < 1 and row['FC'] > -1:
+   if row['FC'] < 1.0 and row['FC'] > -1.0:
       return 'Non-significant'
-   elif row["FC"] > 1:
+   elif row["FC"] > 1.0:
        return "Significant {}".format(labels[0])
    else: 
         return "Significant {}".format(labels[1])
 
-def prc_fc_comp(tcga_tpm_df, sleuth_results, exp, drop_outliers = False):
+def prc_fc_comp(tcga_tpm_df, sleuth_results, exp, mapping_cols, drop_outliers = False):
 
     # get the tpms
     pd_for_diff = pd.read_csv(info_path + exp + ".info", sep="\t")
@@ -47,7 +48,6 @@ def prc_fc_comp(tcga_tpm_df, sleuth_results, exp, drop_outliers = False):
 
     df = dummy_df[dummy_df["genes"].isin(sleuth_results["genes"])]
 
-    mapping_cols = utilities.create_map_cols(tcga_tpm_df)
     df.rename(columns=mapping_cols, inplace=True)
 
     df = df[["genes"] +  list(pd_for_diff["sample"].values)]
