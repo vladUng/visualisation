@@ -35,6 +35,8 @@ def import_data(fullPath):
         return None
 
 # Graphs
+
+### Volcano
 def draw_volcano(df, fold_changes, selected_data, selected_genes):
     """ Drawing the volcano plot
 
@@ -63,7 +65,7 @@ def draw_volcano(df, fold_changes, selected_data, selected_genes):
         ylabel="-log10(q)",
         xlabel="log2(FC)",
         col='#2A3F5F',
-        point_size=6,
+        point_size=8,
         effect_size_line_width=4,
         genomewideline_width=2,
         highlight=True, 
@@ -107,6 +109,69 @@ def show_selected_genes_vulcano(df, selected_genes, fig):
 
     return fig
 
+### Pi Plot
+def draw_pi_plot(df_1, df_2, file_1, file_2, selected_data, selected_genes):
+
+    title = ""
+    # Decide which is bigger, the number of genes may differ
+    if df_1.shape[0] < df_2.shape[0]:
+        first_df = df_2.copy(deep=True).set_index("genes")
+        second_df = df_1.copy(deep=True).set_index("genes")
+        title = "X: {} on  vs Y: {}".format(file_2, file_1)
+    else:
+        first_df = df_1.copy(deep=True).set_index("genes")
+        second_df = df_2.copy(deep=True).set_index("genes")
+        title = "X: {} on  vs Y: {}".format(file_1, file_2)
+        
+    # compute the values
+    first_df["x"] = -np.log10(first_df["q"]) * first_df["fold_change"]
+    second_df["y"] = -np.log10(second_df["q"]) * second_df["fold_change"]
+
+    # Note the genes number may differ and we're setting the index of the DataFrame which has the most genes (i.e. rows)
+    #  However, there might be some genes in the second df which are not in the first one. Regardless, we set the nan values to 0 (points will be added to the center)
+    first_df.rename(columns={"group": "comp_1"}, inplace=True)
+    second_df.rename(columns={"group": "comp_2"}, inplace=True)
+
+    dummy_df = pd.concat([first_df[["x", "comp_1"]], second_df[["y", "comp_2"]]], axis=1).fillna(0).reset_index().rename(columns={"index":"genes"})
+    
+    dummy_df["main"] = "PI_plot"
+    fig = px.scatter(dummy_df, x="x", y="y", hover_data=["genes", "comp_1", "comp_2"], color="main", title=title)
+
+    x_col = "x"
+    y_col = "y"
+
+    # Add the selected points
+    if selected_data:
+        ranges = selected_data['range']
+        selection_bounds = {'x0': ranges['x'][0], 'x1': ranges['x'][1],
+                            'y0': ranges['y'][0], 'y1': ranges['y'][1]}
+
+        # There is something weird going on with indexes
+        selected_genes = [gene["customdata"][0] if "customdata" in gene.keys() else gene["text"] for gene in selected_data["points"]]
+
+        # [gene for gene in selected_data["points"] if "customdata" not in gene.keys() else geme["text"] ]
+
+        selected_idxs = dummy_df[dummy_df["genes"].isin(selected_genes)].index
+
+        fig.update_traces(selectedpoints=selected_idxs,
+            mode='markers', 
+            unselected={'marker': { 'opacity': 0.3 }
+            })
+    else:
+        offset = 10
+        selection_bounds = {'x0': np.min(dummy_df[x_col] - offset), 'x1': np.max(dummy_df[x_col] + offset),
+                            'y0': np.min(dummy_df[y_col] - offset), 'y1': np.max(dummy_df[y_col]) + offset}
+
+    fig.update_layout(dragmode='select')
+    fig.add_shape(dict({'type': 'rect',
+                        'line': { 'width': 1, 'dash': 'dot', 'color': 'darkgrey' } },
+                       **selection_bounds))
+
+    fig = add_anottations(first_df, second_df, dummy_df, fig)
+    fig = show_selected_genes_pi(first_df.reset_index(), second_df.reset_index(), fig, selected_genes)
+
+    return fig
+
 def show_selected_genes_pi(df_1, df_2, fig, selected_genes):
     custom_traces = create_custom_traces(selected_genes)
     colors =  px.colors.qualitative.Vivid
@@ -115,6 +180,54 @@ def show_selected_genes_pi(df_1, df_2, fig, selected_genes):
 
     return fig 
 
+def add_anottations(first_df, second_df, dummy_df, fig):
+    offset = 10
+    fig.add_shape(type='line',
+                    x0=dummy_df["x"].min()*1.5, y0=0,
+                    x1=dummy_df["x"].max()*1.5, y1=0,
+                    line=dict(color='Black', width=1),
+                    xref='x', yref='y')
+
+    fig.add_shape(type='line',
+                    x0=0, y0=dummy_df["y"].min()*1.5,
+                    x1=0, y1=dummy_df["y"].max()*1.5,
+                    line=dict(color='Black', width=1),
+                    xref='x',
+                    yref='y')
+
+    fig.add_annotation(showarrow=True,
+                   arrowhead=1,
+                   align = 'right',
+                   x=first_df["x"].max() + offset, y=0,
+                   text=first_df.loc[first_df["x"] == first_df["x"].max()]["comp_1"].values[0],
+                   opacity=0.7)
+
+    fig.add_annotation(showarrow=True,
+                arrowhead=1,
+                align = 'left',
+                x=first_df["x"].min() - offset, y= 0,
+                text=first_df.loc[first_df["x"] == first_df["x"].min()]["comp_1"].values[0],
+                opacity=0.7)
+        
+    fig.add_annotation(showarrow=True,
+                   arrowhead=1,
+                   align = 'right',
+                   y=second_df["y"].max() + offset, x=0,
+                   text=second_df.loc[second_df["y"] == second_df["y"].max()]["comp_2"].values[0],
+                   opacity=0.7)
+
+    fig.add_annotation(showarrow=True,
+                arrowhead=1,
+                align = 'right',
+                y=second_df["y"].min() - offset, x =0,
+                text=second_df.loc[second_df["y"] == second_df["y"].min()]["comp_2"].values[0],
+                opacity=0.7)
+
+    return fig
+
+### Scatter Plot
+
+### Common plotting
 def create_custom_traces(selected_genes = None):
 
     ifnq_genes = ['B2M', 'BATF2', 'BTN3A3', 'CD74', 'CIITA', 'CXCL10', 'CXCL9',
@@ -191,124 +304,9 @@ def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", mar
 
     markers = {"size": marker_size, "color": selected_df.shape[0] * [marker_color] }
 
-    trace = dict(type='scatter', x=x, y= y,  showlegend=True, marker=markers, text=selected_df["genes"], mode="markers+text" , name=name)
+    trace = dict(type='scatter', x=x, y= y,  showlegend=True, marker=markers, text=selected_df["genes"], mode="markers" , name=name)
 
     return trace
-
-def draw_pi_plot(df_1, df_2, file_1, file_2, selected_data, selected_genes):
-
-    title = ""
-    # Decide which is bigger, the number of genes may differ
-    if df_1.shape[0] < df_2.shape[0]:
-        first_df = df_2.copy(deep=True).set_index("genes")
-        second_df = df_1.copy(deep=True).set_index("genes")
-        title = "X: {} on  vs Y: {}".format(file_2, file_1)
-    else:
-        first_df = df_1.copy(deep=True).set_index("genes")
-        second_df = df_2.copy(deep=True).set_index("genes")
-        title = "X: {} on  vs Y: {}".format(file_1, file_2)
-        
-    # compute the values
-    first_df["x"] = -np.log10(first_df["q"]) * first_df["fold_change"]
-    second_df["y"] = -np.log10(second_df["q"]) * second_df["fold_change"]
-
-    # Note the genes number may differ and we're setting the index of the DataFrame which has the most genes (i.e. rows)
-    #  However, there might be some genes in the second df which are not in the first one. Regardless, we set the nan values to 0 (points will be added to the center)
-    first_df.rename(columns={"group": "comp_1"}, inplace=True)
-    second_df.rename(columns={"group": "comp_2"}, inplace=True)
-
-    dummy_df = pd.concat([first_df[["x", "comp_1"]], second_df[["y", "comp_2"]]], axis=1).fillna(0).reset_index().rename(columns={"index":"genes"})
-    
-    dummy_df["main"] = "PI_plot"
-    fig = px.scatter(dummy_df, x="x", y="y", hover_data=["genes", "comp_1", "comp_2"], color="main", title=title)
-
-    x_col = "x"
-    y_col = "y"
-
-    # Add the selected points
-    if selected_data:
-        ranges = selected_data['range']
-        selection_bounds = {'x0': ranges['x'][0], 'x1': ranges['x'][1],
-                            'y0': ranges['y'][0], 'y1': ranges['y'][1]}
-
-        # There is something weird going on with indexes
-        selected_genes = [gene["customdata"][0] if "customdata" in gene.keys() else gene["text"] for gene in selected_data["points"]]
-
-        # [gene for gene in selected_data["points"] if "customdata" not in gene.keys() else geme["text"] ]
-
-        selected_idxs = dummy_df[dummy_df["genes"].isin(selected_genes)].index
-
-        fig.update_traces(selectedpoints=selected_idxs,
-            mode='markers', 
-            unselected={'marker': { 'opacity': 0.3 }
-            })
-    else:
-        offset = 10
-        selection_bounds = {'x0': np.min(dummy_df[x_col] - offset), 'x1': np.max(dummy_df[x_col] + offset),
-                            'y0': np.min(dummy_df[y_col] - offset), 'y1': np.max(dummy_df[y_col]) + offset}
-
-    fig.update_layout(dragmode='select')
-    fig.add_shape(dict({'type': 'rect',
-                        'line': { 'width': 1, 'dash': 'dot', 'color': 'darkgrey' } },
-                       **selection_bounds))
-
-    fig = add_anottations(first_df, second_df, dummy_df, fig)
-    fig = show_selected_genes_pi(first_df.reset_index(), second_df.reset_index(), fig, selected_genes)
-
-    # fig.update_traces(
-    #     hovertemplate="<br>".join([
-    #         "X: %{x}",
-    #         "Y: %{y}",
-    #         "Genes: %{customdata[1]}",
-    #     ])
-    # )
-
-    return fig
-
-def add_anottations(first_df, second_df, dummy_df, fig):
-    offset = 10
-    fig.add_shape(type='line',
-                    x0=dummy_df["x"].min()*1.5, y0=0,
-                    x1=dummy_df["x"].max()*1.5, y1=0,
-                    line=dict(color='Black', width=1),
-                    xref='x', yref='y')
-
-    fig.add_shape(type='line',
-                    x0=0, y0=dummy_df["y"].min()*1.5,
-                    x1=0, y1=dummy_df["y"].max()*1.5,
-                    line=dict(color='Black', width=1),
-                    xref='x',
-                    yref='y')
-
-    fig.add_annotation(showarrow=True,
-                   arrowhead=1,
-                   align = 'right',
-                   x=first_df["x"].max() + offset, y=0,
-                   text=first_df.loc[first_df["x"] == first_df["x"].max()]["comp_1"].values[0],
-                   opacity=0.7)
-
-    fig.add_annotation(showarrow=True,
-                arrowhead=1,
-                align = 'left',
-                x=first_df["x"].min() - offset, y= 0,
-                text=first_df.loc[first_df["x"] == first_df["x"].min()]["comp_1"].values[0],
-                opacity=0.7)
-        
-    fig.add_annotation(showarrow=True,
-                   arrowhead=1,
-                   align = 'right',
-                   y=second_df["y"].max() + offset, x=0,
-                   text=second_df.loc[second_df["y"] == second_df["y"].max()]["comp_2"].values[0],
-                   opacity=0.7)
-
-    fig.add_annotation(showarrow=True,
-                arrowhead=1,
-                align = 'right',
-                y=second_df["y"].min() - offset, x =0,
-                text=second_df.loc[second_df["y"] == second_df["y"].min()]["comp_2"].values[0],
-                opacity=0.7)
-
-    return fig
 
 # HTML
 def create_dropdown(files, plot_type, text="Select a file"):
@@ -393,12 +391,11 @@ def create_urls(selected_data):
 
     return urls, selected_genes
 
-
 # Callbacks
 def init_callbacks(dash_app): 
     @dash_app.callback(
         [Output("volcano-text-output", "children"), Output('click-data', 'children'),
-         Output('figure-volcano', "figure")],
+         Output('figure-volcano', "figure"), Output("figure-scatter", "figure")],
         [Input('plot-volcano', 'n_clicks'),
          Input('default-volcanoplot-input', 'value')], 
           Input('figure-volcano', 'selectedData'),
@@ -412,7 +409,7 @@ def init_callbacks(dash_app):
         genes_div, selected_genes = create_urls(selected_data) 
 
         figure = draw_volcano(data_dict["data"], fold_changes, selected_data, selected_genes=selected_genes)
-        return ret_string, genes_div, figure
+        return ret_string, genes_div, figure, figure
                     
     @dash_app.callback(
     [Output("pi-plot-text-output", "children"),
@@ -432,7 +429,6 @@ def init_callbacks(dash_app):
 
 
 DATA_PATH = "data/VolcanoPlots/"
-# files = next(walk("/Users/vlad/Documents/Code/York/visualisation/visualisation/data/VolcanoPlots"), (None, None, []))[2]
 files = next(walk(DATA_PATH), (None, None, []))[2]
 
 files.sort()
@@ -454,19 +450,28 @@ layout = html.Div(children=[
         ]),
         html.Hr(),
         html.Br(),
-        html.Div(id="figures",  style={"column-count": "2"}, children=[
-            html.Div(id='volcano-text-output'),
-            dcc.Graph(
-                id='figure-volcano',
-                figure={"data": {},
-                        "layout": {"title": "No Volcano displayed", "height": 800}
-                        }),
-            html.Div(id='pi-plot-text-output'),
-            dcc.Graph(
-                id='figure-pi-plot',
-                figure={"data": {},
-                        "layout": {"title": "No π plot displayed", "height": 800}
-                        }),            
+        html.Div(id="figures", children=[
+            html.Div(id="pi-vulcano-fig",  style={"column-count": "2"}, children=[
+                html.Div(id='volcano-text-output'),
+                dcc.Graph(
+                    id='figure-volcano',
+                    figure={"data": {},
+                            "layout": {"title": "No Volcano displayed", "height": 800}
+                            }),
+                html.Div(id='pi-plot-text-output'),
+                dcc.Graph(
+                    id='figure-pi-plot',
+                    figure={"data": {},
+                            "layout": {"title": "No π plot displayed", "height": 800}
+                            }),      
+            ]),
+            html.Div(id="scatter-plot", children=[
+                dcc.Graph(
+                    id='figure-scatter',
+                    figure={"data": {},
+                            "layout": {"title": "No Scatter plot displayed", "height": 800}
+                    }),                
+            ])
         ]),
         html.Div(style={"column-count": "1"}, children = [
             dcc.Markdown("""
