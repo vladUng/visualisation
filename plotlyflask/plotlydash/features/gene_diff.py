@@ -320,8 +320,9 @@ def draw_scatter(filename, tcga_tpm_df, df, mapping_cols, selected_data, selecte
 
     fig = plt_scatter(fold_change, selected_points, True)
 
-    return fig
+    fig.update_layout(clickmode='event+select')
 
+    return fig
 
 ### Common plotting
 def create_custom_traces(selected_genes = None):
@@ -360,6 +361,13 @@ def create_custom_traces(selected_genes = None):
     lund_ba_sq = ["BRIP1", "E2F7", "FOXM1", "ZNF367", "IRF1", "SP110", "STAT1"]
     lund_mes = ["TP53", "RB1", "FGFR3", "ANKHD1", "VIM", "ZEB2"]
     ba_sq_inf = ["CDH3", "EGFR"]
+
+    # Basal dif
+
+    # Cluster 2
+
+    # cl_2_high = LY6D, KRT16, KRT13, KRT14,  PI3, AQP13, SERPINB13, SPRR1B, SPRR1A, CLCA2, GPX2, TMPRSS4, DSG3, TMPRSS4, CALML3, RH
+    # cl_2_diff = 1
     
 
     custom_traces = []
@@ -382,7 +390,7 @@ def create_custom_traces(selected_genes = None):
     custom_traces.append({"genes":lund_mes, "title": "Mes-like"})
     custom_traces.append({"genes":ba_sq_inf, "title": "Ba/sq-inf"})
 
-    return custom_traces
+    return []
 
 def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", marker_size=6, df_2=None): 
 
@@ -479,6 +487,14 @@ def create_urls(selected_data):
               ),
             ])
         )
+        urls.append(
+             html.Div([
+                 dcc.Textarea(
+                     id="textarea_id_2",
+                     value=','.join(selected_genes), style={"height": 100, "width": 300},
+              ),
+            ])
+        )
             
         # html.Div("Copy/paste list of genes: [" + '","'.join(selected_genes) + "]", style={"column-count": "2"}))
         for gene in selected_genes:
@@ -502,8 +518,8 @@ def init_callbacks(dash_app):
         [Output("volcano-text-output", "children"), Output('click-data', 'children'),
          Output('figure-volcano', "figure"), Output("figure-scatter", "figure")],
         [Input('plot-volcano', 'n_clicks'),
-         Input('default-volcanoplot-input', 'value')], 
-          Input('figure-volcano', 'selectedData'),
+         Input('default-volcanoplot-input', 'value'), 
+          Input('figure-volcano', 'selectedData')],
         [State("select-file-volcano", "value")]
     )
     def plotVolcano(btn, fold_changes, selected_data, filename):
@@ -520,7 +536,17 @@ def init_callbacks(dash_app):
         scatter = draw_scatter(filename, tcga_tpm_df, data_dict["data"], mapping_cols, selected_data, selected_genes)
 
         return ret_string, genes_div, vulcano, scatter
-                    
+
+    @dash_app.callback(
+        Output('click-data-scatter', 'children'),
+        Input('figure-scatter', 'selectedData'),
+    )
+    def scatterSelection(selected_data):
+
+        genes_div, selected_genes = create_urls(selected_data) 
+        
+        return genes_div
+
     @dash_app.callback(
     [Output("pi-plot-text-output", "children"),
         Output('figure-pi-plot', "figure"), Output('click-data-pi', 'children')],
@@ -579,8 +605,13 @@ layout = html.Div(children=[
                 dcc.Graph(
                     id='figure-scatter',
                     figure={"data": {},
-                            "layout": {"title": "No Scatter plot displayed", "height": 800}
-                    }),                
+                            "layout": {"title": "No Scatter plot displayed", "height": 600}
+                    }), 
+                dcc.Markdown("""
+                **Scatter plot selected Genes**
+                    Genes that were clicked in the scatter plot plot
+                """),
+                html.Pre(id='click-data-scatter', style=styles['pre'])   
             ])
         ]),
         html.Div(style={"column-count": "1"}, children = [
@@ -593,7 +624,7 @@ layout = html.Div(children=[
                 **Volcano selected Genes**
                     Genes that were clicked in the volcano plot
                 """),
-            html.Pre(id='click-data', style=styles['pre']),
+            html.Pre(id='click-data', style=styles['pre']),            
         ]),
         html.Div(style={"height":"200px"})
     ]),
