@@ -16,6 +16,7 @@ import time
 
 from plotlyflask.viz_tools import scatter_plot as sp
 from plotlyflask.viz_tools import utilities
+from plotlyflask.viz_tools import gene_markers as gm
 
 pd.options.plotting.backend = "plotly"
 
@@ -68,7 +69,7 @@ def draw_volcano(df, fold_changes, selected_data, selected_genes):
         ylabel="-log10(q)",
         xlabel="log2(FC)",
         col='#2A3F5F',
-        point_size=8,
+        point_size=10,
         effect_size_line_width=4,
         genomewideline_width=2,
         highlight=True, 
@@ -91,22 +92,23 @@ def draw_volcano(df, fold_changes, selected_data, selected_genes):
     else:
         selection_bounds = {'x0': np.min(df[x_col] - 2), 'x1': np.max(df[x_col] + 2),
                             'y0': np.min(df[y_col] - 2), 'y1': np.max(df[y_col]) + 2}
+        fig.update_traces(marker=dict(size=10, opacity=0.4), selector=dict(mode='markers'))
+
 
     fig = show_selected_genes_vulcano(df, selected_genes, fig)
 
-    fig.update_traces(customdata=df["genes"], textposition="bottom left")
+    fig.update_traces(customdata=df["genes"], textposition="top right")
     fig.update_layout(dragmode='select')
 
     fig.add_shape(dict({'type': 'rect',
                         'line': { 'width': 1, 'dash': 'dot', 'color': 'darkgrey' } },
                        **selection_bounds))
-    
 
     return fig
 
 def show_selected_genes_vulcano(df, selected_genes, fig):
     custom_traces = create_custom_traces(selected_genes=selected_genes)
-    colors =  px.colors.qualitative.Vivid
+    colors =  px.colors.qualitative.Bold + px.colors.qualitative.Vivid 
     for idx, trace in enumerate(custom_traces): 
         fig.add_trace(create_gene_trace(df, trace["genes"], name=trace["title"], marker_color=colors[idx]))
 
@@ -140,6 +142,8 @@ def draw_pi_plot(df_1, df_2, file_1, file_2, selected_data, selected_genes):
     dummy_df["main"] = "PI_plot"
     fig = px.scatter(dummy_df, x="x", y="y", hover_data=["genes", "comp_1", "comp_2"], color="main", title=title)
 
+    fig.update_traces(marker=dict(size=10, opacity=0.4), selector=dict(mode='markers'))
+    
     x_col = "x"
     y_col = "y"
 
@@ -157,18 +161,19 @@ def draw_pi_plot(df_1, df_2, file_1, file_2, selected_data, selected_genes):
         selected_idxs = dummy_df[dummy_df["genes"].isin(selected_genes)].index
 
         fig.update_traces(selectedpoints=selected_idxs,
-            mode='markers', 
+            mode='markers+text', 
             unselected={'marker': { 'opacity': 0.3 }
             })
+    
+        fig.add_shape(dict({'type': 'rect',
+                        'line': { 'width': 1, 'dash': 'dot', 'color': 'darkgrey' } },
+                       **selection_bounds))
     else:
         offset = 10
         selection_bounds = {'x0': np.min(dummy_df[x_col] - offset), 'x1': np.max(dummy_df[x_col] + offset),
                             'y0': np.min(dummy_df[y_col] - offset), 'y1': np.max(dummy_df[y_col]) + offset}
 
-    fig.update_layout(dragmode='select')
-    fig.add_shape(dict({'type': 'rect',
-                        'line': { 'width': 1, 'dash': 'dot', 'color': 'darkgrey' } },
-                       **selection_bounds))
+
 
     fig = add_anottations(first_df, second_df, dummy_df, fig)
     fig = show_selected_genes_pi(first_df.reset_index(), second_df.reset_index(), fig, selected_genes)
@@ -177,7 +182,7 @@ def draw_pi_plot(df_1, df_2, file_1, file_2, selected_data, selected_genes):
 
 def show_selected_genes_pi(df_1, df_2, fig, selected_genes):
     custom_traces = create_custom_traces(selected_genes)
-    colors =  px.colors.qualitative.Vivid
+    colors =  px.colors.qualitative.Bold + px.colors.qualitative.Vivid 
     for idx, trace in enumerate(custom_traces): 
         fig.add_trace(create_gene_trace(df_1, trace["genes"], name=trace["title"], marker_color=colors[idx], df_2=df_2))
 
@@ -271,26 +276,32 @@ def plt_scatter(df, selected_points, known_markers=False):
     clusters = df.columns[1:]
     fig = px.scatter(df, x=clusters[0], y=clusters[1], hover_data=["genes", "FC"], color="sig",  color_discrete_sequence=['#636EFA', "grey", '#EF553B'])
 
+    fig.update_traces(marker=dict(size=10, opacity=0.4), selector=dict(mode='markers'))
+    
     fig = plt_fc_lines(fig, df, fc_values = [0, 1, 2, 4])
-
 
     if not selected_points.empty:
         fig.add_trace(go.Scatter(x=selected_points[clusters[0]], y=selected_points[clusters[1]],
                                  mode="markers+text", text=selected_points["genes"], hoverinfo='all', textposition="top right", name="Selected Points"))
 
+    global clustered_genes
+    if not clustered_genes.empty:
+        dmy_df = df[df["genes"].isin(clustered_genes)]
+        fig.add_trace(go.Scatter(x=dmy_df[clusters[0]], y=dmy_df[clusters[1]],
+                                 mode="markers", text=dmy_df["genes"], hoverinfo='all', textposition="top right", name="Clustered genes"))
+
     if known_markers:
         custom_traces = create_custom_traces()
-        colors =  px.colors.qualitative.Vivid
-        marker_size = 6
+        colors =  px.colors.qualitative.Vivid + px.colors.qualitative.Bold
+        marker_size = 12
         for idx, trace in enumerate(custom_traces): 
             selected_df = df[df["genes"].isin(trace["genes"])]
 
-            markers = {"size": marker_size, "color": selected_df.shape[0] * [colors[idx]] }
+            markers = {"size": marker_size, "color": selected_df.shape[0] * [colors[idx]], "symbol": "x"}
             trace = dict(type='scatter', x=selected_df[clusters[0]], y=selected_df[clusters[1]],  showlegend=True, marker=markers, 
                             text=selected_df["genes"], mode="markers+text" , name=trace["title"],  textposition="top right")
 
             fig.add_trace(trace)
-
 
     fig.update_layout(
         xaxis = dict(
@@ -315,84 +326,55 @@ def draw_scatter(filename, tcga_tpm_df, df, mapping_cols, selected_data, selecte
 
     looked_up_genes_cluster_2 = ["S100A2", "S100A8", "S100A9", "HSPB1"]
 
-
     selected_points = fold_change[fold_change["genes"].isin(selected_genes)]
 
     fig = plt_scatter(fold_change, selected_points, True)
-
     fig.update_layout(clickmode='event+select')
 
     return fig
 
 ### Common plotting
 def create_custom_traces(selected_genes = None):
-
-    ifnq_genes = ['B2M', 'BATF2', 'BTN3A3', 'CD74', 'CIITA', 'CXCL10', 'CXCL9',
-       'EPSTI1', 'GBP1', 'GBP4', 'GBP5', 'HAPLN3', 'HLA-DPA1', 'IDO1',
-       'IFI30', 'IFI35', 'IFIT3', 'IFITM1', 'IL32', 'IRF1', 'NLRC5',
-       'PARP9', 'PSMB8-AS1', 'PSMB9', 'SAMHD1', 'SECTM1', 'STAT1', 'TAP1',
-       'TNFSF13B', 'TYMP', 'UBE2L6', 'WARS1', 'ZBP1']
-
-    luminal_markers = ["KRT20", "PPARG", "FOXA1", "GATA3", "SNX31", "UPK1A", "UPK2", "FGFR3"]
-
-    basal_markers = ["CD44", "KRT6A", "KRT5", "KRT14", "COL17A1"]
-
-    squamos_markers = ["DSC3", "GSDMC", "TCGM1", "PI3", "TP63"]
-
-    immune_markers = ["CD274", "PDCD1LG2", "IDO1", "CXCL11", "L1CAM", "SAA1"]
-
-    neural_diff = ["MSI1", "PLEKHG4B", "GNG4", "PEG10", "RND2", "APLP1", "SOX2", "TUBB2B"]
-
-    ryan_genes = ["FGFR3", "EGFR", "TP53"]
-    rarg_genes = ['ADGRF1', 'ALDH3B1', 'ANKRD13D', 'ANXA11', 'B3GNT3', 'BHLHE41',
-       'CAPN1', 'CDK2AP2', 'CIB1', 'CPTP', 'CTSH', 'GALE', 'HSH2D',
-       'MMEL1', 'OAS1', 'PLCD3', 'PNPLA2', 'PRKCD', 'RARG', 'RNPEPL1',
-       'TCIRG1', 'THEM6', 'TNFAIP2', 'UBA7', 'UNC93B1', 'VAMP8', 'VSIG2']
-
-    # both ba_sq_inf and mes_like
-    lund_qtc1 = ["FLI1", "FOXP3", "ILKZF1", "IRF4", "IRF8", "RUNX3", "SCML4", "SPI1", "STAT4", "TBX21", "TFEC"]
-    lund_qtc2 = ["AEBP1", "BNC2", "GLI2", "GLIS1", "HIC1", "MSC", "PPRX1", "PPRX2", "TGFB1I1", "TWIST1"]
-    lund_qtc3 = ["EBF1", "HEYL", "LEF1", "MEF2C", "TCF4", "ZEB1", "ZEB2"]
-    lund_qtc8 = ["GATA5", "HAND1", "HAND2", "KLF16"]
-    lund_qtc17 = ["ARID5A", "BATF3", "VENTX"]
-
-    lund_ba_mes = lund_qtc1 + lund_qtc2 + lund_qtc3 + lund_qtc8 + lund_qtc17
-
-    lund_ba_sq = ["BRIP1", "E2F7", "FOXM1", "ZNF367", "IRF1", "SP110", "STAT1"]
-    lund_mes = ["TP53", "RB1", "FGFR3", "ANKHD1", "VIM", "ZEB2"]
-    ba_sq_inf = ["CDH3", "EGFR"]
-
-    # Basal dif
-
-    # Cluster 2
-
-    # cl_2_high = LY6D, KRT16, KRT13, KRT14,  PI3, AQP13, SERPINB13, SPRR1B, SPRR1A, CLCA2, GPX2, TMPRSS4, DSG3, TMPRSS4, CALML3, RH
-    # cl_2_diff = 1
-    
-
     custom_traces = []
     if selected_genes:
         custom_traces.append({"genes":selected_genes, "title": "Selected genes"})
 
+    ifnq_genes = ["INFG", 'B2M', 'BATF2', 'BTN3A3', 'CD74', 'CIITA', 'CXCL10', 'CXCL9','EPSTI1', 'GBP1', 'GBP4', 'GBP5', 'HAPLN3', 'HLA-DPA1', 'IDO1', 'IFI30', 'IFI35', 'IFIT3', 'IFITM1', 'IL32', 'IRF1', 'NLRC5', 'PARP9', 'PSMB8-AS1', 'PSMB9', 'SAMHD1', 'SECTM1', 'STAT1', 'TAP1','TNFSF13B', 'TYMP', 'UBE2L6', 'WARS1', 'ZBP1']
+
+    diff_neuronal = ['ST18', 'DPYSL5', 'DCX', 'TMEM145', 'ELAVL3', 'TOP2A', 'SCN3A', 'ASXL3', 'SEZ6', 'ATP1A3', 'CELF3', 'PEX5L', 'PCSK2', 'PROX1', 'EPHA7', 'CHGB', 'UNC13A', 'RIMS2', 'CAMK2B', 'NKX2-2', 'AP3B2']
+
+    # diff when Consensus vs Mixed and LumInf vs Mixed
+    ne_dif = ["ARHGAP33","CBX5","CCNE2","CDCA5","CDCA8","CDK5R1","CDKAL1","CENPF","CLSPN","CNIH2","COCH","DCX","DPYSL5","E2F7","ENHO","FBXO43","FBXO5","FSD1","GNAZ","GPRIN1","GTSE1","HES6","HMGB2","IFT81","KCNH3","LHX2","LMNB1","MAD2L1","MCM2","MSANTD3-TMEFF1","MT3","PBK","PDXP","PIMREG","PPM1D","PRAME","PSIP1","PSRC1","PTTG1","QSOX2","RCOR2","SALL2","SCML2","SMC2","SRSF12","STMN1","TEDC2","TLCD3B","TMSB15A","TUBA1B","TUBB2B","TXNDC16","TYMS","USP1","WASF1","ZNF711", "C12orf75","CBX2","CDC25C","DEPDC1","EZH2","GAS2L3","KIF18B","NUSAP1","ODC1"]
+
+    mixed_lumInf_diff =["ADGRF4","ADIRF","ALS2CL","ANXA8","ANXA8L1","B3GNT3","BATF","BCAS1","C10orf99","C19orf33","CH17-360D5.2","CLDN1","CTSH","CXCL17","EPS8L1","EVPL","FAM110C","FXYD3","GBP2","GNA15","GPR87","IL1RN","ITGB4","ITGB6","KCNN4","KRT19","KRT7","MPZL2","MYOF","P2RY2","PLEKHN1","PRSS22","PSCA","PTGES","PTK6","S100A11","S100A6","S100P","SDC1","SNCG","SYT8","SYTL1","TACSTD2","TINAGL1","TMEM40","UPK1A","UPK2","UPK3A","UPK3B","VGLL1","WNT7B", "ACSF2","ARHGAP27","BICDL2","CAPS","CARD11","CBLC","CLDN4","CSTB","CYP4B1","DENND2D","DTX4","EHF","ELF3","EPHA1","EPN3","FBP1","FOXQ1","GATA3","GDF15","GGT6","GPR160","GRHL1","GRHL3","IQANK1","KRT7-AS","LLNLR-231D4.1","LPAR5","METRNL","NECTIN4","OVOL1","PLA2G2F","PLA2G4F","PPL","PROM2","PSD4","RAB25","RBBP8NL","RBM47","RP4-568C11.4","S100A14","SCNN1B","SEMA4A","SPINK1","SSH3","TFAP2C","TJP3","TMC6","TMPRSS2","TRPM4","UGT1A6","VAMP8","VSIG2"]
+
+    jens_work = ["GJB1"]
+
+    # custom_traces.append({"genes": jens_work, "title": "Jen's work"})
+
+    # custom_traces.append({"genes":ne_dif, "title": "Diff for NE"})
+
+    # custom_traces.append({"genes":mixed_lumInf_diff, "title": "Diff for Mixed/LumInf"})
+
+
     # SB
-    custom_traces.append({"genes":ifnq_genes, "title": "SB_IFNQ"})
-    # custom_traces.append({"genes":rarg_genes, "title": "SB_RARG"})
-    # TCGA
-    custom_traces.append({"genes":luminal_markers, "title": "TCGA_luminal"})
-    custom_traces.append({"genes":basal_markers, "title": "TCGA_basal"})
-    custom_traces.append({"genes":squamos_markers, "title": "TCGA_squamos"})
-    custom_traces.append({"genes":immune_markers, "title": "TCGA_immune"})
-    custom_traces.append({"genes":neural_diff, "title": "TCGA_neuroendocrine"})
+    # custom_traces.append({"genes":ifnq_genes, "title": "SB_IFNQ"})
+    # custom_traces.append({"genes":diff_neuronal, "title": "Diff old vs remap"})
 
-    # lund
-    custom_traces.append({"genes":lund_ba_mes, "title": "Mes-like + Ba/sq-inf"})
-    custom_traces.append({"genes":lund_ba_sq, "title": "Lund ba/sq"})
-    custom_traces.append({"genes":lund_mes, "title": "Mes-like"})
-    custom_traces.append({"genes":ba_sq_inf, "title": "Ba/sq-inf"})
+    # ryan_genes = ["FGFR3", "EGFR", "TP53"]
+    custom_traces = gm.add_tcga_markers(custom_traces=custom_traces)
+    # custom_traces = gm.add_lund_markers(custom_traces=custom_traces)
 
-    return []
+    # custom_traces = gm.lumInf_mixed(custom_traces=custom_traces)
 
-def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", marker_size=6, df_2=None): 
+    custom_traces = gm.significant_genes(custom_traces=custom_traces)
+
+    custom_traces = gm.low_significant_genes(custom_traces=custom_traces)
+    
+    return custom_traces
+    # return []
+
+def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", marker_size=12, df_2=None): 
 
     selected_df = df[df["genes"].isin(genes)]
 
@@ -406,9 +388,9 @@ def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", mar
         x = -np.log10(selected_df["q"]) * selected_df["fold_change"]
         y = -np.log10(selected_df_2["q"]) * selected_df_2["fold_change"]
 
-    markers = {"size": marker_size, "color": selected_df.shape[0] * [marker_color] }
+    markers = {"size": marker_size, "color": selected_df.shape[0] * [marker_color], "symbol": "x" }
 
-    trace = dict(type='scatter', x=x, y= y,  showlegend=True, marker=markers, text=selected_df["genes"], mode="markers" , name=name)
+    trace = dict(type='scatter', x=x, y= y,  showlegend=True, marker=markers, text=selected_df["genes"], mode="markers+text" , name=name, textposition= 'top center')
 
     return trace
 
@@ -506,13 +488,16 @@ def create_urls(selected_data):
 # Callbacks
 def init_callbacks(dash_app): 
 
-    # for scatter
-    tcga_tpm_df, _ = sp.get_tpms_df()
-    mapping_cols = utilities.create_map_cols(tcga_tpm_df)
-
     # optimisation for volcano
     global prev_filename, data_dict 
     prev_filename = ""
+
+    global clustered_genes
+
+    # for scatter
+    tcga_tpm_df, clustered_genes = sp.get_tpms_df()
+    # tcga_tpm_df = tcga_tpm_df[tcga_tpm_df["genes"].isin(list(selected_genes))]
+    mapping_cols = utilities.create_map_cols(tcga_tpm_df)
 
     @dash_app.callback(
         [Output("volcano-text-output", "children"), Output('click-data', 'children'),
@@ -544,7 +529,6 @@ def init_callbacks(dash_app):
     def scatterSelection(selected_data):
 
         genes_div, selected_genes = create_urls(selected_data) 
-        
         return genes_div
 
     @dash_app.callback(
@@ -586,48 +570,50 @@ layout = html.Div(children=[
         ]),
         html.Hr(),
         html.Br(),
-        html.Div(id="figures", children=[
-            html.Div(id="pi-vulcano-fig",  style={"column-count": "2"}, children=[
-                html.Div(id='volcano-text-output'),
-                dcc.Graph(
-                    id='figure-volcano',
-                    figure={"data": {},
-                            "layout": {"title": "No Volcano displayed", "height": 800}
-                            }),
-                html.Div(id='pi-plot-text-output'),
-                dcc.Graph(
-                    id='figure-pi-plot',
-                    figure={"data": {},
-                            "layout": {"title": "No π plot displayed", "height": 800}
-                            }),      
-            ]),
-            html.Div(id="scatter-plot", children=[
-                dcc.Graph(
-                    id='figure-scatter',
-                    figure={"data": {},
-                            "layout": {"title": "No Scatter plot displayed", "height": 600}
-                    }), 
-                dcc.Markdown("""
-                **Scatter plot selected Genes**
-                    Genes that were clicked in the scatter plot plot
-                """),
-                html.Pre(id='click-data-scatter', style=styles['pre'])   
-            ])
-        ]),
-        html.Div(style={"column-count": "1"}, children = [
-            dcc.Markdown("""
-                **Pi Plot selected Genes**
-                    Genes that were clicked in the pi plot
-                """),
-            html.Pre(id='click-data-pi', style=styles['pre']),
-            dcc.Markdown("""
-                **Volcano selected Genes**
-                    Genes that were clicked in the volcano plot
-                """),
-            html.Pre(id='click-data', style=styles['pre']),            
-        ]),
-        html.Div(style={"height":"200px"})
     ]),
+    html.Div(id="figures", style={"column-count": "1"}, children=[
+        html.Div(children=[
+            html.Div(id='volcano-text-output'),
+            dcc.Graph(
+                id='figure-volcano',
+                figure={"data": {},
+                        "layout": {"title": "No Volcano displayed", "height": 800}
+                        }),
+        ]),
+        html.Div(children=[
+            html.Div(id='pi-plot-text-output'),
+            dcc.Graph(
+                id='figure-pi-plot',
+                figure={"data": {},
+                        "layout": {"title": "No π plot displayed", "height": 800}
+                }),      
+        ]),
+    ]),
+        html.Div(id="scatter-plot", children=[
+            dcc.Graph(
+                id='figure-scatter',
+                figure={"data": {},
+                        "layout": {"title": "No Scatter plot displayed", "height": 600}
+                }), 
+            dcc.Markdown("""
+            **Scatter plot selected Genes**
+                Genes that were clicked in the scatter plot plot
+            """),
+            html.Pre(id='click-data-scatter', style=styles['pre'])   
+        ]),
+    html.Div(style={"column-count": "1"}, children = [
+        dcc.Markdown("""
+            **Pi Plot selected Genes**
+                Genes that were clicked in the pi plot
+            """),
+        html.Pre(id='click-data-pi', style=styles['pre']),
+        dcc.Markdown("""
+            **Volcano selected Genes**
+                Genes that were clicked in the volcano plot
+            """),
+        html.Pre(id='click-data', style=styles['pre']),            
+    ]),
+    html.Div(style={"height":"200px"}),
 ])
 
 

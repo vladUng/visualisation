@@ -71,7 +71,7 @@ def tcga_add_metadata(df, df_meta):
 
 def draw_umap(data, meta_df, n_neighbors=15, min_dist=0.1, n_components=2,
               metric='cosine', title='', colour="TCGA408_classifier"):
-    umap_model = umap.UMAP(n_neighbors=n_neighbors, min_dist=min_dist, n_components=n_components, metric=metric)
+    umap_model = umap.UMAP(n_neighbors=n_neighbors, min_dist=min_dist, n_components=n_components, metric=metric, )
 
     u_fit = umap_model.fit_transform(data.values)
     columns = []
@@ -106,8 +106,7 @@ def init_callbacks(dash_app, data_dict):
         [Output('umap-config-1', "children"), Output("umap-plot-1", "figure")],
         [Input("compute-viz-1", 'n_clicks')],
         [State("neighbours-slider-1", 'value'),
-         State("distance-slider-1", 'value'), State("select-metrics-1",
-                                                    "value"), State("select-colouring-1", "value"),
+         State("distance-slider-1", 'value'), State("select-metrics-1","value"), State("select-colouring-1", "value"),
          State("select-components-1", "value")]
     )
     def plotUMAP(btn, neighbours, distance, metric, colouring, n_comp):
@@ -115,7 +114,9 @@ def init_callbacks(dash_app, data_dict):
         ret_string = "Umap with the following config: Neighbours: {}, Distance: {}, Metric: {}, Colour: {}, Components: {}".format(
             neighbours, distance, metric, colouring, n_comp)
 
-        figure = draw_umap(data_dict["data"], data_dict["metadata"], n_neighbors=neighbours, min_dist=distance, n_components=n_comp, metric=metric, colour=str(colouring))
+        figure = {}
+        if btn:
+            figure = draw_umap(data_dict["data"], data_dict["metadata"], n_neighbors=neighbours, min_dist=distance, n_components=n_comp, metric=metric, colour=str(colouring))
 
         return ret_string, figure
 
@@ -138,8 +139,7 @@ def init_callbacks(dash_app, data_dict):
         [Output('umap-config-2', "children"), Output("umap-plot-2", "figure")],
         [Input("compute-viz-2", 'n_clicks')],
         [State("neighbours-slider-2", 'value'),
-         State("distance-slider-2", 'value'), State("select-metrics-2",
-                                                    "value"), State("select-colouring-2", "value"),
+         State("distance-slider-2", 'value'), State("select-metrics-2", "value"), State("select-colouring-2", "value"),
          State("select-components-2", "value")]
     )
     def plotUMAP_2(btn, neighbours, distance, metric, colouring, n_comp):
@@ -147,8 +147,10 @@ def init_callbacks(dash_app, data_dict):
         ret_string = "Umap with the following config: Neighbours: {}, Distance: {}, Metric: {}, Colour: {}, Components: {}".format(
             neighbours, distance, metric, colouring, n_comp)
 
-        figure = draw_umap(data_dict["data"], data_dict["metadata"], n_neighbors=neighbours,
-                           min_dist=distance, n_components=n_comp, metric=metric, colour=str(colouring))
+        figure = {}
+        if btn:
+            figure = draw_umap(data_dict["data"], data_dict["metadata"], n_neighbors=neighbours,
+                            min_dist=distance, n_components=n_comp, metric=metric, colour=str(colouring))
         return ret_string, figure
 
     @dash_app.callback(
