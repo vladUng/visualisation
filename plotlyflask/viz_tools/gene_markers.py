@@ -1,3 +1,13 @@
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   gene_markers.py
+@Time    :   2022/10/27 13:18:54
+@Author  :   Vlad Ungureanu
+@Version :   1.0
+@Contact :   vlad.ungureanu@york.ac.uk
+@Desc    :   File to put genes that are show in the DEA/Pi/Scatter plot
+'''
 
 
 def add_tcga_markers(custom_traces):
@@ -120,20 +130,38 @@ def lumInf_mixed(custom_traces):
 
     return custom_traces
 
-
 def significant_genes(custom_traces):
 
     small = ['IGKJ1', 'IGKV3-20', 'IGLC2', 'IGKV2-28', 'IGKJ2', 'IGHJ4', 'IGLC1', 'IGKV4-1', 'H19', 'CD14', 'IGHG1', 'C1QB', 'IGHJ5', 'POSTN', 'HTRA3', 'C1QC', 'IGKV1D-39', 'CTHRC1', 'IGHG2', 'AEBP1', 'IGHG3', 'HLA-DQA1', 'IGLC3', 'NNMT', 'CCN2', 'IGKJ4', 'MMP11', 'CTSK']
 
-    large = ['KRT5', 'DSP', 'S100A2', 'H19', 'LY6D', 'CDH3', 'AQP3', 'MALL', 'KRT16', 'S100A8', 'SERPINB5', 'ANXA8L1', 'SLPI', 'COL17A1', 'KRT14', 'TNS4', 'S100A9']
+    # large = ['KRT5', 'DSP', 'S100A2', 'H19', 'LY6D', 'CDH3', 'AQP3', 'MALL', 'KRT16', 'S100A8', 'SERPINB5', 'ANXA8L1', 'SLPI', 'COL17A1', 'KRT14', 'TNS4', 'S100A9']
 
+    large_2 = ['AKR1C2', 'ABO', 'AQP3', 'ANXA8L1', 'ALDH3B2', 'AKR1C3', 'AKR1C1',
+       'ADGRF1', 'AATBC', 'AGR2', 'ADGRF4', 'AC124789.1', 'AC003099.2',
+       'ADGRV1', 'ADORA2B', 'ANK3', 'ARL4D', 'AREG', 'AC007283.5',
+       'ABLIM3', 'ALDH1L1', 'CA12', 'COL17A1', 'GPX2', 'BICDL2', 'ABCA1',
+       'CASP1', 'KRT14', 'KRT13', 'ACER2', 'AC011288.2', 'ATP2C2',
+       'ALOX5AP', 'ANO1', 'CSTA', 'KRT5', 'AMDHD1', 'ANXA3', 'CA9',
+       'CDH3', 'FAM83A', 'CKMT1A', 'C1orf116', 'CELSR2', 'GJB6', 'CKMT1B',
+       'ADCY7', 'DEFB1', 'CLDN1', 'AK4', 'LY6D', 'ABI3', 'BATF2',
+       'ADAMTSL4', 'AC000123.4', 'AIF1', 'ANKRD18B', 'KRT16', 'FGFR3',
+       'CH17-360D5.2', 'CA2', 'AC005537.2', 'C15orf48', 'AC007326.11',
+       'ACOT11', 'ALDH1A3', 'ARHGEF35', 'CCL20', 'GJB2', 'ANKRD50',
+       'ADSS1', 'ABCC3', 'ARTN', 'AMN', 'ALDH5A1', 'CXCL17', 'ABAT',
+       'BNIPL', 'KRT15', 'DSP', 'ANKRD22', 'AC074286.1', 'CLEC2B',
+       'CXCL1', 'AFAP1L2', 'CFB', 'ADA', 'GRHL3', 'CAV1', 'AC022154.7',
+       'AC004237.1', 'CXCL8', 'CNFN', 'ARNTL2', 'CXCL10', 'CELSR1',
+       'IL20RB', 'ADGRG6', 'ALDH1A2', 'LCN2', 'ADAM28', 'GJB5', 'ANGPTL4',
+       'ARHGEF37', 'GJB3', 'CFH', 'IVL', 'FAM110C', 'DSC2', 'CCL5',
+       'C1orf210', 'C1QB', 'ARHGAP9', 'AC015849.19', 'AP1S3', 'C1orf74',
+       'CARD6']
     lumP = ['S100A2', 'PSCA', 'H19', 'LY6D', 'UPK2', 'AQP3', 'ABCC3', 'KRT13', 'IGLC2', 'GPX2', 'CDC42EP5', 'VSIG2', 'DHRS2', 'SPINK1', 'TMPRSS4']
 
     mixed = ['IGHG1', 'IGLC2', 'CDKN2A']
 
     lumInf = ['IGKV3-20', 'IGLC2', 'ACTG2', 'IGHJ4', 'IGLC1', 'S100A9', 'H19', 'MUC20', 'IGHG1', 'C1QB', 'POSTN', 'GPX2', 'IGHA1', 'PSCA', 'UPK2', 'AEBP1', 'IGLC3', 'NNMT', 'KRT23', 'CTSK']
 
-    custom_traces.append({"genes":large, "title": "Highest large Ba/Sq"})
+    custom_traces.append({"genes":large_2, "title": "Highest large Ba/Sq"})
     custom_traces.append({"genes":small, "title": "Highest small Ba/Sq"})
 
     custom_traces.append({"genes":lumP, "title": "Highest lump"})
@@ -142,12 +170,33 @@ def significant_genes(custom_traces):
 
     return custom_traces
 
-
 def low_significant_genes(custom_traces):
 
     small = ['GSTM2', 'FABP4', 'HSD17B1', 'SCIN', 'NEB', 'AC132217.4', 'S100A3', 'RP11-20D14.6', 'SYNM', 'MYLPF', 'SOX2-OT', 'HES6', 'ALDH1A1', 'CRMP1', 'STAG3', 'CES1', 'LGALS4', 'CCL20', 'FCRLB', 'MSX1', 'SCUBE2', 'TSPAN7', 'IGF2', 'RP11-87N24.3', 'CD79B', 'CTC-425F1.4', 'ITM2A', 'AIFM3', 'NRN1', 'RP5-940J5.9', 'TGM1', 'AKR1C1', 'FABP3', 'RASD1', 'IL20RB', 'SPINK1', 'MMP9', 'SELL', 'GLDC', 'TESC', 'LINC01088', 'CD36']
 
     large = ['AC005301.9', 'S100A3', 'RP11-20D14.6', 'SYNM', 'MYLPF', 'SOX2-OT', 'HES6', 'ALDH1A1', 'STAG3', 'HSPB6', 'CES1', 'LGALS4', 'CCL20', 'FCRLB', 'MSX1', 'TSPAN7', 'EFHD1', 'RP11-87N24.3', 'CD79B', 'CTC-425F1.4', 'ITM2A', 'AIFM3', 'RP5-940J5.9', 'FABP3', 'RASD1', 'MMP9', 'APLP1', 'SELL', 'ID4', 'SERPINI1', 'TESC', 'LINC01088', 'CD36']
+
+    large_2 = ['AEBP1', 'AK4', 'ADAM19', 'ALOX5AP', 'ADA', 'ANXA3', 'ADCY7',
+       'AIF1', 'AREG', 'ADAMTSL4', 'ADAMTS2', 'KRT14', 'C1QB', 'ACTG2',
+       'C1QC', 'CAV1', 'KRT5', 'ARNTL2', 'A1BG', 'CDH3', 'ANKH',
+       'ADORA2B', 'ARL4D', 'BCL2A1', 'CCDC80', 'ANXA8L1', 'AFAP1L2',
+       'CD14', 'CXCL10', 'CHI3L1', 'ALDH1A1', 'CCL4', 'CDA', 'KRT16',
+       'ABI3', 'BIN1', 'CHST11', 'CXCL1', 'CASP1', 'CCL20', 'AGPAT4',
+       'CTHRC1', 'AMOTL1', 'CHST15', 'CCL3', 'CA9', 'CD163', 'DSC2', 'F3',
+       'C15orf48', 'COL17A1', 'BATF2', 'DSP', 'ARHGAP9', 'EFEMP1', 'AXL',
+       'COL5A1', 'CCL5', 'ANPEP', 'ALDH2', 'CCDC71L', 'CXCL8', 'C12orf75',
+       'COL5A2', 'CTSV', 'DEFB1', 'CD53', 'GJB2', 'COL16A1', 'IL20RB',
+       'CES1', 'AC018816.3', 'FAM83A', 'COPZ2', 'CLEC2B', 'CA2',
+       'AGAP2-AS1', 'C1orf162', 'CFB', 'ALDH1A3', 'ADAP2', 'AOAH',
+       'ADCY9', 'AMDHD1', 'BDKRB2', 'ABCA1', 'CALHM6', 'FCGR3A',
+       'CFAP251', 'ANO1', 'CD7', 'APOC2', 'AC007283.5', 'ANGPTL2', 'DPYD',
+       'FAP', 'AQP3', 'ARHGEF37', 'IDO1', 'ADAMTS4', 'CD86', 'BIRC3',
+       'CRYAB', 'CD300A', 'CFI', 'ARHGAP22', 'CELSR2', 'CELSR1',
+       'AFAP1L1', 'CSF1R', 'CDCA7L', 'ATP10D', 'COL5A3', 'FCGR2A', 'ASPM',
+       'CD3E', 'C1QTNF1', 'CCN2', 'C1orf74', 'ECM1', 'CD2', 'LAMA3',
+       'CD52', 'GNLY', 'HTRA3', 'CYBB', 'FAM20A', 'CLCF1', 'CSF1',
+       'LAMC2', 'CEACAM19', 'CCL2', 'CGAS', 'IGHG1', 'DSE', 'EPSTI1']
+
 
     lumP =  ['MT1M', 'HSD17B1', 'CD36', 'PTHLH', 'LMOD1', 'KRT14', 'S100A3', 'RP11-20D14.6', 'SYNM', 'CHI3L1', 'SOX2-OT', 'ALDH1A1', 'SUGCT', 'IL1R2', 'IGHG4', 'STAG3', 'OLR1', 'CES1', 'SPP1', 'CCL20', 'TSPAN7', 'EFHD1', 'GZMB', 'ANPEP', 'UCHL1', 'COMP', 'CD79B', 'ITM2A', 'AREG', 'TGM1', 'FABP3', 'EFEMP1', 'RASD1', 'IL20RB', 'MMP9', 'APLP1', 'SELL', 'IDO1', 'IGHM']
 
@@ -158,7 +207,7 @@ def low_significant_genes(custom_traces):
     # There are a lot of genes that have low expression and are shared across. So, we're interested in the genes that are particulary low for a subgroup
     all_genes = set(small) | set(large) | set(lumP) | set(mixed) | set(lumInf) 
 
-    custom_traces.append({"genes": all_genes & set(large), "title": "Lowest large Ba/Sq"})
+    custom_traces.append({"genes": set(large_2), "title": "Lowest arge Ba/Sq"})
     custom_traces.append({"genes": all_genes & set(small), "title": "Lowest small Ba/Sq"})
 
     custom_traces.append({"genes": all_genes & set(lumP), "title": "Lowest lump"})
@@ -166,3 +215,5 @@ def low_significant_genes(custom_traces):
     custom_traces.append({"genes": all_genes & set(lumInf), "title": "Lowest lumInf"})
 
     return custom_traces
+
+
