@@ -173,8 +173,6 @@ def draw_pi_plot(df_1, df_2, file_1, file_2, selected_data, selected_genes):
         selection_bounds = {'x0': np.min(dummy_df[x_col] - offset), 'x1': np.max(dummy_df[x_col] + offset),
                             'y0': np.min(dummy_df[y_col] - offset), 'y1': np.max(dummy_df[y_col]) + offset}
 
-
-
     fig = add_anottations(first_df, second_df, dummy_df, fig)
     fig = show_selected_genes_pi(first_df.reset_index(), second_df.reset_index(), fig, selected_genes)
 
@@ -349,6 +347,10 @@ def create_custom_traces(selected_genes = None):
     mixed_lumInf_diff =["ADGRF4","ADIRF","ALS2CL","ANXA8","ANXA8L1","B3GNT3","BATF","BCAS1","C10orf99","C19orf33","CH17-360D5.2","CLDN1","CTSH","CXCL17","EPS8L1","EVPL","FAM110C","FXYD3","GBP2","GNA15","GPR87","IL1RN","ITGB4","ITGB6","KCNN4","KRT19","KRT7","MPZL2","MYOF","P2RY2","PLEKHN1","PRSS22","PSCA","PTGES","PTK6","S100A11","S100A6","S100P","SDC1","SNCG","SYT8","SYTL1","TACSTD2","TINAGL1","TMEM40","UPK1A","UPK2","UPK3A","UPK3B","VGLL1","WNT7B", "ACSF2","ARHGAP27","BICDL2","CAPS","CARD11","CBLC","CLDN4","CSTB","CYP4B1","DENND2D","DTX4","EHF","ELF3","EPHA1","EPN3","FBP1","FOXQ1","GATA3","GDF15","GGT6","GPR160","GRHL1","GRHL3","IQANK1","KRT7-AS","LLNLR-231D4.1","LPAR5","METRNL","NECTIN4","OVOL1","PLA2G2F","PLA2G4F","PPL","PROM2","PSD4","RAB25","RBBP8NL","RBM47","RP4-568C11.4","S100A14","SCNN1B","SEMA4A","SPINK1","SSH3","TFAP2C","TJP3","TMC6","TMPRSS2","TRPM4","UGT1A6","VAMP8","VSIG2"]
 
     jens_work = ["GJB1"]
+
+    basal_small_specific = ['AC005301.9',   'AIF1', 'APOC2', 'CALHM6', 'CCL4', 'CD163',  'CLCF1',  'DERL3',  'ELN',  'FBLN2',  'FCGR2A',  'FOLR2',  'FST',  'GZMB',  'HCST',  'IFIT3',  'ITGB2',  'KRT80',  'MFAP4',  'MMP23B',  'MS4A6A',  'MT1M',  'MZB1',  'NKG7',  'NR4A1AS',  'OLFML2A',  'OLFML3',  'RGS2',  'RP11-54H7.4',  'TRAC']
+
+    custom_traces.append({"genes": basal_small_specific, "title": "Small Ba/Sq specific"})
 
     # custom_traces.append({"genes": jens_work, "title": "Jen's work"})
 
@@ -571,7 +573,7 @@ layout = html.Div(children=[
         html.Hr(),
         html.Br(),
     ]),
-    html.Div(id="figures", style={"column-count": "1"}, children=[
+    html.Div(id="figures", style={"column-count": "2"}, children=[
         html.Div(children=[
             html.Div(id='volcano-text-output'),
             dcc.Graph(
