@@ -139,8 +139,9 @@ def draw_pi_plot(df_1, df_2, file_1, file_2, selected_data, selected_genes):
 
     dummy_df = pd.concat([first_df[["x", "comp_1"]], second_df[["y", "comp_2"]]], axis=1).fillna(0).reset_index().rename(columns={"index":"genes"})
     
-    dummy_df["main"] = "PI_plot"
-    fig = px.scatter(dummy_df, x="x", y="y", hover_data=["genes", "comp_1", "comp_2"], color="main", title=title)
+    dummy_df["main_colour"] = "PI_plot"
+    # show in the hover everything apart from the main_colour column
+    fig = px.scatter(dummy_df, x="x", y="y", hover_data=dummy_df.columns, color="main_colour", title=title)
 
     fig.update_traces(marker=dict(size=10, opacity=0.4), selector=dict(mode='markers'))
     
@@ -170,8 +171,7 @@ def draw_pi_plot(df_1, df_2, file_1, file_2, selected_data, selected_genes):
                        **selection_bounds))
     else:
         offset = 10
-        selection_bounds = {'x0': np.min(dummy_df[x_col] - offset), 'x1': np.max(dummy_df[x_col] + offset),
-                            'y0': np.min(dummy_df[y_col] - offset), 'y1': np.max(dummy_df[y_col]) + offset}
+        selection_bounds = {'x0': np.min(dummy_df[x_col] - offset), 'x1': np.max(dummy_df[x_col] + offset),'y0': np.min(dummy_df[y_col] - offset), 'y1': np.max(dummy_df[y_col]) + offset}
 
     fig = add_anottations(first_df, second_df, dummy_df, fig)
     fig = show_selected_genes_pi(first_df.reset_index(), second_df.reset_index(), fig, selected_genes)
@@ -232,10 +232,13 @@ def add_anottations(first_df, second_df, dummy_df, fig):
     return fig
 
 ### Scatter Plot
-# def draw_scatter_plot(df, selected_data, filename):
 def plt_fc_lines(fig, df, fc_values):
 
-    max_value = round(df[df.columns.values[1:-1]].max().max())
+    # max_value = round(df[df.columns.values[1:-1]].max().max())
+    # get the maximum values across fold_change and the cluster groups
+    med_cols = [col for col in df.columns if "med" in col and "fold" not in col]
+    groups = ["fold_change"] + list(med_cols)
+    max_value = round(df[groups].max().max())
 
     colours = ["Black", "Green", "goldenrod", "Red", "orange", "Green", "Purple"]
     line_type = [None, None, "dot", "dash", "dash"]
@@ -271,22 +274,21 @@ def plt_fc_lines(fig, df, fc_values):
 
 def plt_scatter(df, selected_points, known_markers=False):
 
-    clusters = df.columns[1:]
-    fig = px.scatter(df, x=clusters[0], y=clusters[1], hover_data=["genes", "FC"], color="sig",  color_discrete_sequence=['#636EFA', "grey", '#EF553B'])
+    # select the columns with fold change based on the median
+    clusters = [col for col in df.columns if ("med" in col) and ("fold" not in col)]
+    fig = px.scatter(df, x=clusters[0], y=clusters[1], hover_data=df.columns, color="significance",  color_discrete_sequence=['#636EFA', "grey", '#EF553B'])
 
     fig.update_traces(marker=dict(size=10, opacity=0.4), selector=dict(mode='markers'))
     
     fig = plt_fc_lines(fig, df, fc_values = [0, 1, 2, 4])
 
     if not selected_points.empty:
-        fig.add_trace(go.Scatter(x=selected_points[clusters[0]], y=selected_points[clusters[1]],
-                                 mode="markers+text", text=selected_points["genes"], hoverinfo='all', textposition="top right", name="Selected Points"))
+        fig.add_trace(go.Scatter(x=selected_points[clusters[0]], y=selected_points[clusters[1]], mode="markers+text", text=selected_points["genes"], hoverinfo='all', textposition="top right", name="Selected Points"))
 
     global clustered_genes
     if not clustered_genes.empty:
         dmy_df = df[df["genes"].isin(clustered_genes)]
-        fig.add_trace(go.Scatter(x=dmy_df[clusters[0]], y=dmy_df[clusters[1]],
-                                 mode="markers", text=dmy_df["genes"], hoverinfo='all', textposition="top right", name="Clustered genes"))
+        fig.add_trace(go.Scatter(x=dmy_df[clusters[0]], y=dmy_df[clusters[1]],mode="markers", text=dmy_df["genes"], hoverinfo='all', textposition="top right", name="Clustered genes"))
 
     if known_markers:
         custom_traces = create_custom_traces()
@@ -296,8 +298,7 @@ def plt_scatter(df, selected_points, known_markers=False):
             selected_df = df[df["genes"].isin(trace["genes"])]
 
             markers = {"size": marker_size, "color": selected_df.shape[0] * [colors[idx]], "symbol": "x"}
-            trace = dict(type='scatter', x=selected_df[clusters[0]], y=selected_df[clusters[1]],  showlegend=True, marker=markers, 
-                            text=selected_df["genes"], mode="markers+text" , name=trace["title"],  textposition="top right")
+            trace = dict(type='scatter', x=selected_df[clusters[0]], y=selected_df[clusters[1]],  showlegend=True, marker=markers, text=selected_df["genes"], mode="markers+text" , name=trace["title"],  textposition="top right")
 
             fig.add_trace(trace)
 
@@ -316,17 +317,14 @@ def plt_scatter(df, selected_points, known_markers=False):
     
     return fig
 
-def draw_scatter(filename, tcga_tpm_df, df, mapping_cols, selected_data, selected_genes):
-    exp = "_".join(filename.split("_")[:-2])
-    fold_change, _ = sp.prc_fc_comp(tcga_tpm_df, df, exp, mapping_cols, drop_outliers=False)
+def draw_scatter(df, selected_genes):
+    # exp = "_".join(filename.split("_")[:-2])
+    # fold_change, _ = sp.prc_fc_comp(tcga_tpm_df, df, exp, mapping_cols, drop_outliers=False)
 
-    relevant_genes = ["ALDH3B2","AQP3","BARX2","C10orf99","CAPNS2","CLCA2","CLCA4","DSG3","DSP","FAM110C","FAT2","FGFBP1","FGFR3","GJB2","GJB5","GJB6","GPX2","GRHL1","HES2","IL20RB","IRF6","IVL","KLK11","KRT13","KRT16","KRT5","KRT6A","LAD1","LRATD1","LYPD3","MIR205HG","NECTIN4","PERP","PGLYRP3","PKP1","RHCG","RHOV","SDC1","SERPINB3","SERPINB4","SERPINB5","SLPI","SOX15","SPRR1A","SPRR1B","SPRR2A","SPRR2D","TMPRSS4","TP63","ZNF750"]
+    df = sp.add_sig(df)
+    selected_points = df[df["genes"].isin(selected_genes)]
 
-    looked_up_genes_cluster_2 = ["S100A2", "S100A8", "S100A9", "HSPB1"]
-
-    selected_points = fold_change[fold_change["genes"].isin(selected_genes)]
-
-    fig = plt_scatter(fold_change, selected_points, True)
+    fig = plt_scatter(df, selected_points, True)
     fig.update_layout(clickmode='event+select')
 
     return fig
@@ -520,7 +518,7 @@ def init_callbacks(dash_app):
         genes_div, selected_genes = create_urls(selected_data) 
 
         vulcano = draw_volcano(data_dict["data"], fold_changes, selected_data, selected_genes=selected_genes)
-        scatter = draw_scatter(filename, tcga_tpm_df, data_dict["data"], mapping_cols, selected_data, selected_genes)
+        scatter = draw_scatter(data_dict["data"], selected_genes)
 
         return ret_string, genes_div, vulcano, scatter
 

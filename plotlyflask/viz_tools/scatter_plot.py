@@ -4,7 +4,6 @@ import numpy as np
 
 from plotlyflask.viz_tools import utilities
 
-base_path_results =  "/Users/vlad/Documents/Code/York/BU_clustering/results/Stage I/"
 base_path_data = "/Users/vlad/Documents/Code/York/BU_clustering/data/TCGA/"
 
 info_path = "/Users/vlad/Documents/Code/York/visualisation/visualisation/data/ScatterPlot/infoFiles/"
@@ -31,9 +30,9 @@ def get_tpms_df():
     return tcga_tpm_df, selected_genes
 
 def significant_genes (row, labels):
-   if row['FC'] < 1.0 and row['FC'] > -1.0:
+   if row['fold_change_med'] < 1.0 and row['fold_change_med'] > -1.0:
       return 'Non-significant'
-   elif row["FC"] > 1.0:
+   elif row["fold_change_med"] > 1.0:
        return "Significant {}".format(labels[0])
    else: 
         return "Significant {}".format(labels[1])
@@ -73,3 +72,9 @@ def prc_fc_comp(tcga_tpm_df, sleuth_results, exp, mapping_cols, drop_outliers = 
     fold_change["FC"] = fold_change[new_labels[0]] - fold_change[new_labels[1]]
     fold_change["sig"] = fold_change.apply(lambda row: significant_genes(row, new_labels), axis=1 )
     return fold_change, outliers
+
+def add_sig(df):
+
+    labels = df.columns.values[-2:]
+    df["significance"] = df.apply(lambda row: significant_genes(row, labels), axis=1)
+    return df
