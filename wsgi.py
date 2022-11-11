@@ -1,17 +1,14 @@
 
-import dash
-from dash import dcc
-from dash import html
-
 import webbrowser
 
+import dash
+from dash import dcc, html
 
-from plotlyflask.plotlydash.main import app
-
-from plotlyflask.plotlydash.features import gene_diff as gf
-from plotlyflask.plotlydash.features import gene_viz as gv
 # from plotlyflask.plotlydash.features import manyfold as mf
-
+from plotlyflask.gene_diff import gene_diff as gd
+# from plotlyflask.plotlydash.features import gene_diff as gf
+from plotlyflask.plotlydash.features import gene_viz as gv
+from plotlyflask.plotlydash.main import app
 
 index_page = html.Div([
     html.H1("Welcome to JBU's Data visualisation!"),
@@ -35,7 +32,7 @@ def display_page(pathname):
     if pathname == '/gene-vis':
         return gv.layout
     if pathname == '/gene-diff':
-        return gf.layout
+        return gd.layout
     # elif pathname == '/manyfold':
     #     return mf.layout
     else:

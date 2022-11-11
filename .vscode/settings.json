@@ -1,5 +1,4 @@
 {
-    "python.autoComplete.extraPaths": [
-    
-    ]
+    "python.autoComplete.extraPaths": [],
+    "python.analysis.typeCheckingMode": "off"
 }
