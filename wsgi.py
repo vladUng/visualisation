@@ -1,11 +1,9 @@
 
 import dash
-from plotlyflask import init_app
 from dash import dcc
 from dash import html
 
 import webbrowser
-from threading import Timer
 
 
 from plotlyflask.plotlydash.main import app
@@ -50,5 +48,4 @@ def open_browser():
 if __name__ == "__main__":
     #     Timer(1, open_browser).start()
     app.server.run(host='0.0.0.0', port=8080, debug=True)
-
 

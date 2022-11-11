@@ -91,8 +91,7 @@ def process_data(df_metadata, all_tsv):
 
     df_metadata = df_metadata.replace("?", np.nan)
     # cols to replace nan with NA string
-    cols = ["NHU_differentiation", "Tissue",
-            "Gender", "Diagnosis", "Substrate"]
+    cols = ["NHU_differentiation", "Tissue","Gender", "Diagnosis", "Substrate"]
     for col in cols:
         df_metadata[col] = df_metadata[col].fillna("NA")
 
