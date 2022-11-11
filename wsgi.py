@@ -6,8 +6,7 @@ from dash import dcc, html
 
 # from plotlyflask.plotlydash.features import manyfold as mf
 from plotlyflask.gene_diff import gene_diff as gd
-# from plotlyflask.plotlydash.features import gene_diff as gf
-from plotlyflask.plotlydash.features import gene_viz as gv
+from plotlyflask.gene_viz import gene_viz as gv
 from plotlyflask.plotlydash.main import app
 
 index_page = html.Div([
