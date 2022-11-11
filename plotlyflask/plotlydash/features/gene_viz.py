@@ -3,7 +3,8 @@ from plotlyflask.plotlydash.main import app as dash_app
 import numpy as np
 import pandas as pd
 import dash
-from dash_table import DataTable
+# from dash_table import DataTable
+from dash import dash_table
 from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output, State
@@ -15,8 +16,6 @@ import time
 from datetime import datetime
 
 ##### Functions for .tsv handling #####
-
-
 def import_data(base_path):
     """Creates the dataframe used for the tool and the metadata
 
@@ -752,7 +751,7 @@ layout = html.Div(children=[
         html.Div([
             html.H5("Correlations Table"),
             html.Hr(),
-            DataTable(id="pearson-table", columns=[], data=[],
+            dash_table.DataTable(id="pearson-table", columns=[], data=[],
                       style_table={"width": "30%"},
                       style_header={
                 'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},

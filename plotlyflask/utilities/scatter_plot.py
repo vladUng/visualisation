@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 
-from plotlyflask.viz_tools import utilities
+from plotlyflask.utilities import utilities
 
 base_path_data = "/Users/vlad/Documents/Code/York/BU_clustering/data/TCGA/"
 

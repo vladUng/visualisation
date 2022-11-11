@@ -14,9 +14,8 @@ import pandas as pd
 from os import path, walk
 import time
 
-from plotlyflask.viz_tools import scatter_plot as sp
-from plotlyflask.viz_tools import utilities
-from plotlyflask.viz_tools import gene_markers as gm
+from plotlyflask.utilities import scatter_plot as sp
+from plotlyflask.utilities import gene_markers as gm
 
 pd.options.plotting.backend = "plotly"
 
@@ -285,10 +284,10 @@ def plt_scatter(df, selected_points, known_markers=False):
     if not selected_points.empty:
         fig.add_trace(go.Scatter(x=selected_points[clusters[0]], y=selected_points[clusters[1]], mode="markers+text", text=selected_points["genes"], hoverinfo='all', textposition="top right", name="Selected Points"))
 
-    global clustered_genes
-    if not clustered_genes.empty:
-        dmy_df = df[df["genes"].isin(clustered_genes)]
-        fig.add_trace(go.Scatter(x=dmy_df[clusters[0]], y=dmy_df[clusters[1]],mode="markers", text=dmy_df["genes"], hoverinfo='all', textposition="top right", name="Clustered genes"))
+    # # global clustered_genes
+    # if not clustered_genes.empty:
+    #     dmy_df = df[df["genes"].isin(clustered_genes)]
+    #     fig.add_trace(go.Scatter(x=dmy_df[clusters[0]], y=dmy_df[clusters[1]],mode="markers", text=dmy_df["genes"], hoverinfo='all', textposition="top right", name="Clustered genes"))
 
     if known_markers:
         custom_traces = create_custom_traces()
@@ -492,13 +491,6 @@ def init_callbacks(dash_app):
     global prev_filename, data_dict 
     prev_filename = ""
 
-    global clustered_genes
-
-    # for scatter
-    tcga_tpm_df, clustered_genes = sp.get_tpms_df()
-    # tcga_tpm_df = tcga_tpm_df[tcga_tpm_df["genes"].isin(list(selected_genes))]
-    mapping_cols = utilities.create_map_cols(tcga_tpm_df)
-
     @dash_app.callback(
         [Output("volcano-text-output", "children"), Output('click-data', 'children'),
          Output('figure-volcano', "figure"), Output("figure-scatter", "figure")],
@@ -547,14 +539,18 @@ def init_callbacks(dash_app):
         figure = draw_pi_plot(data_dict_1["data"], data_dict_2["data"], file_1, file_2, selected_data, selected_genes=selected_genes)
         return ret_string, figure, genes_div
 
-
+# Get all the files
 DATA_PATH = "data/VolcanoPlots/"
 files = next(walk(DATA_PATH), (None, None, []))[2]
 
-files.sort()
+if len(files):
+    files.sort()
 
-if ".DS_Store" in files:
-    files.remove(".DS_Store")
+    if ".DS_Store" in files:
+        files.remove(".DS_Store")
+else:
+    # ToDo: Alert to browswer 
+    print("There are no files available");
 
 init_callbacks(dash_app)
 
