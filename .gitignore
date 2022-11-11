@@ -139,3 +139,4 @@ token.pickle
 .env
 *.DS_Store
 
+*.vscode/
