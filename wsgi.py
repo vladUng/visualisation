@@ -4,7 +4,7 @@ import webbrowser
 import dash
 from dash import dcc, html
 
-# from plotlyflask.plotlydash.features import manyfold as mf
+from plotlyflask.umap import umap as mf
 from plotlyflask.gene_diff import gene_diff as gd
 from plotlyflask.gene_viz import gene_viz as gv
 from plotlyflask.plotlydash.main import app
@@ -32,8 +32,8 @@ def display_page(pathname):
         return gv.layout
     if pathname == '/gene-diff':
         return gd.layout
-    # elif pathname == '/manyfold':
-    #     return mf.layout
+    if pathname == '/manyfold':
+        return mf.layout
     else:
         return index_page
 

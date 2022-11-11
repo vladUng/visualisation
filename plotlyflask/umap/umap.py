@@ -1,20 +1,16 @@
-from plotlyflask.plotlydash.main import app as dash_app
-from plotlyflask.plotlydash.main import menu
-
-from dash import dcc
-from dash import html
-
-from dash.dependencies import Input, Output, State
-import plotly.express as px
-import plotly.graph_objects as go
+import time
+from os import path
 
 import numpy as np
 import pandas as pd
-
-from os import path, name
-import time
-
+import plotly.express as px
+import plotly.graph_objects as go
 import umap
+from dash import dcc, html
+from dash.dependencies import Input, Output, State
+
+from plotlyflask.plotlydash.main import app as dash_app
+from plotlyflask.plotlydash.main import menu
 
 pd.options.plotting.backend = "plotly"
 
@@ -69,8 +65,7 @@ def tcga_add_metadata(df, df_meta):
             cluster_size)] = df_meta["GaussianMixture_CS_{}".format(cluster_size)].astype(str)
 
 
-def draw_umap(data, meta_df, n_neighbors=15, min_dist=0.1, n_components=2,
-              metric='cosine', title='', colour="TCGA408_classifier"):
+def draw_umap(data, meta_df, n_neighbors=15, min_dist=0.1, n_components=2,metric='cosine', title='', colour="TCGA408_classifier"):
     umap_model = umap.UMAP(n_neighbors=n_neighbors, min_dist=min_dist, n_components=n_components, metric=metric, )
 
     u_fit = umap_model.fit_transform(data.values)
@@ -229,7 +224,6 @@ def create_config_menu(no_figure, df_meta):
     ])
 
 
-# data_dict = import_data("/Users/vlad/Documents/Code/York/visualisation/visualisation/data/UMAP/")
 data_dict = import_data("data/UMAP/")
 init_callbacks(dash_app, data_dict)
 
