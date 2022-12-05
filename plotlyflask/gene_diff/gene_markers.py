@@ -215,5 +215,3 @@ def low_significant_genes(custom_traces):
     custom_traces.append({"genes": all_genes & set(lumInf), "title": "Lowest lumInf"})
 
     return custom_traces
-
-

@@ -101,46 +101,58 @@ def draw_pi_plot(df_1, df_2, filename_1, filename_2, selected_data, selected_gen
 
 def add_anottations(first_df, second_df, dummy_df, fig):
     offset = 10
-    fig.add_shape(type='line',
-                    x0=dummy_df["x"].min()*1.5, y0=0,
-                    x1=dummy_df["x"].max()*1.5, y1=0,
-                    line=dict(color='Black', width=1),
-                    xref='x', yref='y')
+    fig.add_shape(
+        type='line',
+        x0=dummy_df["x"].min()*1.5, y0=0,
+        x1=dummy_df["x"].max()*1.5, y1=0,
+        line=dict(color='Black', width=1),
+        xref='x', yref='y'
+    )
 
-    fig.add_shape(type='line',
-                    x0=0, y0=dummy_df["y"].min()*1.5,
-                    x1=0, y1=dummy_df["y"].max()*1.5,
-                    line=dict(color='Black', width=1),
-                    xref='x',
-                    yref='y')
+    fig.add_shape(
+        type='line',
+        x0=0, y0=dummy_df["y"].min()*1.5,
+        x1=0, y1=dummy_df["y"].max()*1.5,
+        line=dict(color='Black', width=1),
+        xref='x',
+        yref='y'
+    )
 
-    fig.add_annotation(showarrow=True,
-                   arrowhead=1,
-                   align = 'right',
-                   x=first_df["x"].max() + offset, y=0,
-                   text=first_df.loc[first_df["x"] == first_df["x"].max()]["comp_1"].values[0],
-                   opacity=0.7)
+    fig.add_annotation(
+        showarrow=True,
+        arrowhead=1,
+        align = 'right',
+        x=first_df["x"].max() + offset, y=0,
+        text=first_df.loc[first_df["x"] == first_df["x"].max()]["comp_1"].values[0],
+        opacity=0.7
+    )
 
-    fig.add_annotation(showarrow=True,
-                arrowhead=1,
-                align = 'left',
-                x=first_df["x"].min() - offset, y= 0,
-                text=first_df.loc[first_df["x"] == first_df["x"].min()]["comp_1"].values[0],
-                opacity=0.7)
+    fig.add_annotation(
+        showarrow=True,
+        arrowhead=1,
+        align = 'left',
+        x=first_df["x"].min() - offset, y= 0,
+        text=first_df.loc[first_df["x"] == first_df["x"].min()]["comp_1"].values[0],
+        opacity=0.7
+    )
         
-    fig.add_annotation(showarrow=True,
-                   arrowhead=1,
-                   align = 'right',
-                   y=second_df["y"].max() + offset, x=0,
-                   text=second_df.loc[second_df["y"] == second_df["y"].max()]["comp_2"].values[0],
-                   opacity=0.7)
+    fig.add_annotation(
+        showarrow=True,
+        arrowhead=1,
+        align = 'right',
+        y=second_df["y"].max() + offset, x=0,
+        text=second_df.loc[second_df["y"] == second_df["y"].max()]["comp_2"].values[0],
+        opacity=0.7
+    )
 
-    fig.add_annotation(showarrow=True,
-                arrowhead=1,
-                align = 'right',
-                y=second_df["y"].min() - offset, x =0,
-                text=second_df.loc[second_df["y"] == second_df["y"].min()]["comp_2"].values[0],
-                opacity=0.7)
+    fig.add_annotation(
+        showarrow=True,
+        arrowhead=1,
+        align = 'right',
+        y=second_df["y"].min() - offset, x =0,
+        text=second_df.loc[second_df["y"] == second_df["y"].min()]["comp_2"].values[0],
+        opacity=0.7
+    )
 
     return fig
 
