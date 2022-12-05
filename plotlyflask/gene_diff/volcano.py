@@ -92,7 +92,9 @@ def draw_volcano(df, fold_changes, selected_data, selected_genes):
 def show_selected_genes_vulcano(df, selected_genes, fig):
     custom_traces = shared.create_custom_traces(selected_genes=selected_genes)
     colors =  px.colors.qualitative.Bold + px.colors.qualitative.Vivid 
+    
     for idx, trace in enumerate(custom_traces): 
+        
         fig.add_trace(shared.create_gene_trace(df, trace["genes"], name=trace["title"], marker_color=colors[idx]))
 
     return fig
