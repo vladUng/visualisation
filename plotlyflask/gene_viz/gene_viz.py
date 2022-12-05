@@ -391,7 +391,7 @@ def init_callbacks(dash_app, data_dict):
 
 
 # update_all_datasets("data/")
-data_dict = import_data("data/")
+data_dict = import_data("JBU_data/")
 init_callbacks(dash_app, data_dict)
 
 # Create Layout

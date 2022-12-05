@@ -223,8 +223,9 @@ def create_config_menu(no_figure, df_meta):
         html.Br(),
     ])
 
+# data_dict = import_data("data/UMAP/")
 
-data_dict = import_data("data/UMAP/")
+data_dict = import_data("JBU_data/UMAP/")
 init_callbacks(dash_app, data_dict)
 
 

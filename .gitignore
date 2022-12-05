@@ -131,7 +131,7 @@ dmypy.json
 # Project specific folders
 keys/
 saved_data/
-data/
+JBU_data/
 exported_data/
 # g_drive/
 

@@ -184,7 +184,7 @@ def init_callbacks(dash_app):
         return ret_string, figure, genes_div
 
 # Get all the files
-DATA_PATH = "data/VolcanoPlots/"
+DATA_PATH = "JBU_data/VolcanoPlots/"
 files = next(walk(DATA_PATH), (None, None, []))[2]
 
 if len(files):
