@@ -14,7 +14,7 @@ from plotlyflask.plotlydash.main import app as dash_app
 from plotlyflask.plotlydash.main import menu
 
 
-def import_data(base_path):
+def import_data(base_path, filename_ge, filename_meta):
     """Creates the dataframe used for the tool and the metadata
 
     Args:
@@ -27,8 +27,8 @@ def import_data(base_path):
     if path.exists(base_path):
         ret_dict = {}
         ret_dict["all_tsv"] = pd.read_csv(
-            base_path + "all_data.tsv", delimiter="\t")
-        raw_df = pd.read_csv(base_path + "metadata_v3.tsv", delimiter="\t")
+            base_path + filename_ge, delimiter="\t")
+        raw_df = pd.read_csv(base_path + filename_meta, delimiter="\t")
         # we need to do some pre-processing to duplicate the data _incl for fields
         ret_dict["metadata"], ret_dict["all_tsv"] = processing.process_data(
             raw_df, ret_dict["all_tsv"])
@@ -390,8 +390,9 @@ def init_callbacks(dash_app, data_dict):
     """Create a Plotly Dash dashboard."""
 
 
-# update_all_datasets("data/")
-data_dict = import_data("JBU_data/")
+# data_dict = import_data("JBU_data/", filename_ge="all_data.tsv", filename_meta="metadata_v3.tsv")
+data_dict = import_data("data/gene_viz/", filename_ge="baker_BK.tsv", filename_meta="meta_baker_BK.tsv")
+
 init_callbacks(dash_app, data_dict)
 
 # Create Layout
