@@ -12,6 +12,8 @@ baker_metadata = metadata[metadata["Dataset"] == "Baker_BK"]
 
 baker_tpm = data_tpm[["genes"] + list(baker_metadata["Sample"])]
 
-baker_tpm.dropna().reset_index(drop=True).to_csv("data/gene_viz/baker_BK.tsv", sep="\t")
+baker_tpm = baker_tpm.dropna().set_index("genes")
+baker_tpm.to_csv("data/gene_viz/baker_BK.tsv", sep="\t")
 
-baker_metadata.dropna().reset_index(drop=True).to_csv("data/gene_viz/meta_baker_BK.tsv", sep="\t")
+baker_metadata = baker_metadata.reset_index(drop=True)
+baker_metadata.to_csv("data/gene_viz/meta_baker_BK.tsv", sep="\t")

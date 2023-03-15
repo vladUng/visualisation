@@ -391,7 +391,7 @@ def init_callbacks(dash_app, data_dict):
 
 
 # data_dict = import_data("JBU_data/", filename_ge="all_data.tsv", filename_meta="metadata_v3.tsv")
-data_dict = import_data("data/gene_viz/", filename_ge="baker_BK.tsv", filename_meta="meta_baker_BK.tsv")
+data_dict = import_data("JBU_data/", filename_ge="all_data.tsv", filename_meta="metadata_v3.tsv")
 
 init_callbacks(dash_app, data_dict)
 

@@ -14,8 +14,7 @@ from plotlyflask.plotlydash.main import menu
 
 pd.options.plotting.backend = "plotly"
 
-
-def import_data(base_path):
+def import_data(base_path, filename="baker_BK.tsv", meta_filename="meta_baker_BK.tsv"):
     """Creates the dataframe used for the tool and the metadata
 
     Args:
@@ -28,9 +27,9 @@ def import_data(base_path):
     if path.exists(base_path):
 
         ret_dict = {}
-        ret_dict["data"] = pd.read_csv(base_path + "TPM_raw.tsv", delimiter="\t")
-        ret_dict["data"] = ret_dict["data"].set_index("Sample")
-        ret_dict["metadata"] = pd.read_csv(base_path + "metadata_pca.tsv", delimiter="\t")
+        ret_dict["data"] = pd.read_csv(base_path + filename, delimiter="\t")
+        ret_dict["data"] = ret_dict["data"].set_index("genes")
+        ret_dict["metadata"] = pd.read_csv(base_path + meta_filename, delimiter="\t")
         print("Finished loading the data in {}".format(time.time()-start_time))
         # TPM and metadata
         return ret_dict
@@ -223,9 +222,8 @@ def create_config_menu(no_figure, df_meta):
         html.Br(),
     ])
 
-# data_dict = import_data("data/UMAP/")
-
-data_dict = import_data("JBU_data/UMAP/")
+# data_dict = import_data("JBU_data/UMAP/")
+data_dict = import_data("data/gene_viz/")
 init_callbacks(dash_app, data_dict)
 
 
