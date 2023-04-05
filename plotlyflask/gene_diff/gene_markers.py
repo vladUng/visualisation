@@ -9,17 +9,60 @@
 @Desc    :   File to put genes that are show in the DEA/Pi/Scatter plot
 '''
 
+def gc42_high_genes(custom_traces):
+
+    lump = ['AQP3', 'IGLC2', 'DHRS2', 'MAOA', 'TMPRSS4', 'GPX2', 'HPGD', 'VSIG2', 'SPINK1', 'TBX3', 'PSCA', 'UPK2']
+    lumInf_ns = ['MUC20', 'UPK2', 'H19', 'CTSK', 'VGLL1', 'IGKV3-20', 'PSCA', 'IGLC2', 'IGHJ4', 'AEBP1', 'KRT23', 'GPX2', 'IGLC1', 'POSTN', 'IGHG1', 'ACTG2', 'IGHV3-23', 'IGHA1', 'IGLC3']
+    large_basal = ['AQP3', 'TNS4', 'KRT16', 'MALL', 'LY6D', 'SLPI', 'FAM83A', 'DSP', 'KRT5', 'SERPINB5', 'LCN2', 'S100A8', 'COL17A1', 'CDH3', 'ANXA8L1']
+    small_basal =['IGKJ2', 'IGKV1-5', 'HLA-DQA1', 'IGKV1D-39', 'CTHRC1', 'H19', 'KRT5', 'CTSK', 'FCGR3A', 'IGKV3-15', 'IGKJ1', 'IGHJ5', 'CDH3', 'AIF1', 'IGKV3-20', 'IGHG3', 'IGLC2', 'IGHJ4', 'AEBP1', 'IGKV4-1', 'DSP', 'IGKV2-28', 'IGLC1', 'IGLV2-14', 'POSTN', 'IGHG1', 'IGHG2', 'IGHV3-23', 'IGLC3', 'IGKJ4', 'LYZ']
+    ne = ['H2AC19', 'IGLC2', 'IGHG1', 'IGFBP2', 'H19']
+
+    custom_traces.append({"genes": lump, "title": "High LumP"})
+    custom_traces.append({"genes": lumInf_ns, "title": "High LumInf/NS"})
+    custom_traces.append({"genes": large_basal, "title": "High Large Ba/Sq"})
+    custom_traces.append({"genes": small_basal, "title": "High Small Ba/Sq"})
+    custom_traces.append({"genes": ne, "title": "High NE"})
+
+    return custom_traces
+
+def gc42_low_genes(custom_traces):
+
+    lump = ['ENSG00000289474', 'ENSG00000291105', 'ASPN', 'LMOD1', 'SUGCT', 'TGM1', 'CES1', 'ITM2A', 'IL20RB', 'S100A3', 'ANPEP', 'MIR663AHG', 'MT1M', 'PTHLH', 'TSPAN7', 'APLP1', 'SPP1', 'SYNM', 'GZMA', 'SELL', 'HSD17B1', 'GZMB', 'MEF2C', 'HSDL2-AS1', 'EFHD1', 'SOX2-OT', 'C4A', 'WNT5B', 'F13A1', 'IGHM', 'MMP9', 'SCARNA9']
+    lumInf_ns =  ['ENSG00000269968', 'GPC3', 'TGM1', 'CES1', 'ID4', 'ITM2A', 'FABP3', 'IL20RB', 'S100A3', 'ENSG00000251034', 'ENSG00000286746', 'ANPEP', 'MIR663AHG', 'ENSG00000274281', 'CFLAR-AS1', 'PTHLH', 'ENSG00000289609', 'ENSG00000267458', 'GZMA', 'ENSG00000290560', 'LINC01088', 'SCARNA9', 'CRMP1', 'ENSG00000286125', 'ENSG00000237356', 'ENSG00000283633', 'BCL10-AS1', 'HSDL2-AS1', 'ALDH1A1', 'SCGB3A2', 'ENSG00000232035', 'SOX2-OT', 'ENSG00000275216', 'MSX1', 'ENSG00000286827', 'HES6', 'CD36', 'LINC03000', 'RASD1', 'MMP9', 'ENSG00000291060', 'ENSG00000230612']
+    large_basal =['H2BC18', 'ENSG00000269968', 'LMOD1', 'ID4', 'CES1', 'FABP3', 'ITM2A', 'NRN1', 'SORBS1', 'ENSG00000288934', 'PLA2G2A', 'S100A3', 'ENSG00000251034', 'ENSG00000286746', 'ENSG00000274281', 'HSPB6', 'APLP1', 'TSPAN7', 'ENSG00000267458', 'SYNM', 'FXYD1', 'SELL', 'ENSG00000287516', 'AIFM3', 'HSDL2-AS1', 'EFHD1', 'MYH11', 'ALDH1A1', 'ENSG00000232035', 'TESC', 'SOX2-OT', 'ENSG00000286827', 'HES6', 'CD36', 'F13A1', 'RASD1', 'MMP9', 'SCARNA9']
+    small_basal = ['H2BC18', 'ENSG00000269968', 'LINC02895', 'GPC3', 'TGM1', 'CES1', 'FABP3', 'FCRLB', 'NRN1', 'GPAM', 'IL20RB', 'S100A3', 'ENSG00000251034', 'ENSG00000286746', 'AKR1C1', 'ZBTB20', 'ENSG00000274281', 'MIR663AHG', 'CFLAR-AS1', 'ENSG00000289609', 'SPINK1', 'ENSG00000267458', 'ENSG00000291060', 'ENSG00000290560', 'SELL', 'LINC01088', 'HSD17B1', 'ENSG00000237356', 'ENSG00000286125', 'ENSG00000287516', 'AIFM3', 'HSDL2-AS1', 'ALDH1A1', 'ENSG00000232035', 'TESC', 'SOX2-OT', 'MSX1', 'SPRR1A', 'ENSG00000286827', 'HES6', 'CD36', 'ENSG00000291168', 'DANT2', 'FABP4', 'RASD1', 'CYP3A5', 'SCIN', 'SCARNA9', 'GSTM2', 'ENSG00000230612']
+    ne = ['ENSG00000269968', 'ENSG00000289474', 'LMOD1', 'SUGCT', 'TGM1', 'FABP3', 'ITM2A', 'PLA2G2A', 'OLR1', 'RRAD', 'ANPEP', 'MIR663AHG', 'CFLAR-AS1', 'ENSG00000267458', 'SYNM', 'TSPAN7', 'GZMA', 'KLHDC7B', 'CCL20', 'LINC01088', 'SCARNA9', 'S100A8', 'GZMB', 'ENSG00000287516', 'MYH11', 'CST6', 'PDZK1IP1', 'LASTR', 'TNNI2', 'ENSG00000232035', 'ENSG00000291060']
+
+    custom_traces.append({"genes": lump, "title": "Low LumP"})
+    custom_traces.append({"genes": lumInf_ns, "title": "Low LumInf/NS"})
+    custom_traces.append({"genes": large_basal, "title": "Low Large Ba/Sq"})
+    custom_traces.append({"genes": small_basal, "title": "Low Small Ba/Sq"})
+    custom_traces.append({"genes": ne, "title": "Low NE"})
+
+    return custom_traces
+
+def gc42_uniq_genes(custom_traces):
+
+    small_basal=['ENSG00000291105', 'OLFML2A', 'APOC2', 'ANGPTL2', 'CALHM6', 'GLIPR2', 'CD163', 'TRBC1', 'ANPEP', 'FCGR3A', 'FCGR1A', 'OLFML3', 'PDGFRB', 'VCAN', 'FCGR2A', 'ITGB2', 'ENSG00000289273', 'TRAC', 'GZMB', 'HCST', 'NKG7', 'CCL4', 'CCL5', 'MS4A6A', 'VSIG4']
+    ne=['IGSF9', 'SNCA', 'DMTN', 'PRKDC', 'ZNF331', 'TDRP', 'DSC2', 'MXRA8', 'ZSCAN18', 'ADAMTSL2', 'DNM1', 'ARHGAP4', 'FGFRL1', 'SOX9', 'RCAN2', 'HIC2', 'TSPAN33', 'KITLG', 'IL17D', 'MLLT11', 'ST6GAL1', 'KHDRBS3', 'CADM1', 'RAP1GAP', 'LIPE']
+    lump=['PYROXD2', 'HOXB4', 'ENSG00000272141', 'ENSG00000269968', 'FOXA1', 'GPC3', 'KLRK1-AS1', 'DUSP2', 'SPIRE2', 'BHLHE41', 'FRY', 'ATF7IP2', 'HSH2D', 'EPG5', 'SLC40A1', 'ALDH1A2', 'HSD17B14', 'TBC1D3L', 'TMEM184A', 'CEACAM1', 'ABCC3', 'HOXB5', 'CXCL12', 'SPOCD1', 'HOXB2']
+    large_basal=['FKBP5', 'CDK5R1', 'ANO1', 'KLC3', 'ENSG00000290574', 'LRIG3', 'TGM1', 'MAFB', 'CSPG4', 'CLEC2B', 'TRIM22', 'S1PR5', 'IL20RB', 'HLA-DOA', 'OLR1', 'FAP', 'IL15RA', 'GJB5', 'ADAM19', 'LINC01013', 'TRIM7', 'DCBLD2', 'STC1', 'SLC38A5', 'HS3ST1']
+    lumInf_ns=['QPCT', 'EDARADD', 'PTGDS', 'ASPN', 'BEX2', 'C3orf14', 'PRSS27', 'CAPN12', 'ENTPD3', 'ALDH3B1', 'ANXA9', 'SUSD2', 'GATM', 'FHL1', 'DAB2', 'SECTM1', 'RDX', 'TMEM125', 'SELL', 'ACER2', 'FADS1', 'RHPN2', 'SPOCK2', 'CFD', 'NCF4']
+
+    custom_traces.append({"genes": lump, "title": "LumP uniq"})
+    custom_traces.append({"genes": lumInf_ns, "title": "LumInf/NS uniq"})
+    custom_traces.append({"genes": large_basal, "title": "Large Ba/Sq uniq"})
+    custom_traces.append({"genes": small_basal, "title": "Small Ba/Sq uniq"})
+    custom_traces.append({"genes": ne, "title": "NE uniq"})
+
+    return custom_traces 
 
 def add_tcga_markers(custom_traces):
 
     luminal_markers = ["KRT20", "PPARG", "FOXA1", "GATA3", "SNX31", "UPK1A", "UPK2", "FGFR3"]
-
     basal_markers = ["CD44", "KRT6A", "KRT5", "KRT14", "COL17A1"]
-
     squamos_markers = ["DSC3", "GSDMC", "TCGM1", "PI3", "TP63"]
-
     immune_markers = ["CD274", "PDCD1LG2", "IDO1", "CXCL11", "L1CAM", "SAA1"]
-
     neural_diff = ["MSI1", "PLEKHG4B", "GNG4", "PEG10", "RND2", "APLP1", "SOX2", "TUBB2B"]
 
     # TCGA

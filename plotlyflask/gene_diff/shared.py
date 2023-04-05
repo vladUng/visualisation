@@ -7,6 +7,8 @@ import time
 
 from os import path
 
+
+
 def create_custom_traces(selected_genes = None):
     custom_traces = []
     if selected_genes:
@@ -23,9 +25,8 @@ def create_custom_traces(selected_genes = None):
 
     jens_work = ["GJB1"]
 
-    basal_small_specific = ['AC005301.9',   'AIF1', 'APOC2', 'CALHM6', 'CCL4', 'CD163',  'CLCF1',  'DERL3',  'ELN',  'FBLN2',  'FCGR2A',  'FOLR2',  'FST',  'GZMB',  'HCST',  'IFIT3',  'ITGB2',  'KRT80',  'MFAP4',  'MMP23B',  'MS4A6A',  'MT1M',  'MZB1',  'NKG7',  'NR4A1AS',  'OLFML2A',  'OLFML3',  'RGS2',  'RP11-54H7.4',  'TRAC']
-
-    custom_traces.append({"genes": basal_small_specific, "title": "Small Ba/Sq specific"})
+    # basal_small_specific = ['AC005301.9',   'AIF1', 'APOC2', 'CALHM6', 'CCL4', 'CD163',  'CLCF1',  'DERL3',  'ELN',  'FBLN2',  'FCGR2A',  'FOLR2',  'FST',  'GZMB',  'HCST',  'IFIT3',  'ITGB2',  'KRT80',  'MFAP4',  'MMP23B',  'MS4A6A',  'MT1M',  'MZB1',  'NKG7',  'NR4A1AS',  'OLFML2A',  'OLFML3',  'RGS2',  'RP11-54H7.4',  'TRAC']
+    # custom_traces.append({"genes": basal_small_specific, "title": "Small Ba/Sq specific"})
 
     # custom_traces.append({"genes": jens_work, "title": "Jen's work"})
 
@@ -39,14 +40,18 @@ def create_custom_traces(selected_genes = None):
     # custom_traces.append({"genes":diff_neuronal, "title": "Diff old vs remap"})
 
     # ryan_genes = ["FGFR3", "EGFR", "TP53"]
-    custom_traces = gm.add_tcga_markers(custom_traces=custom_traces)
     # custom_traces = gm.add_lund_markers(custom_traces=custom_traces)
 
-    # custom_traces = gm.lumInf_mixed(custom_traces=custom_traces)
+    # custom_traces = gm.lumInf_mixed(custom_traces=custom_traes)
+    # custom_traces = gm.significant_genes(custom_traces=custom_traces)
+    # custom_traces = gm.low_significant_genes(custom_traces=custom_traces)
 
-    custom_traces = gm.significant_genes(custom_traces=custom_traces)
+    custom_traces = gm.add_tcga_markers(custom_traces=custom_traces)
 
-    custom_traces = gm.low_significant_genes(custom_traces=custom_traces)
+    custom_traces = gm.gc42_uniq_genes(custom_traces=custom_traces)
+    custom_traces = gm.gc42_high_genes(custom_traces=custom_traces)
+    custom_traces = gm.gc42_low_genes(custom_traces=custom_traces)
+
     
     return custom_traces
     # return []

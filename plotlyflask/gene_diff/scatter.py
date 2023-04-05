@@ -25,7 +25,7 @@ import plotly.graph_objects as go
 
 def plt_scatter(df, selected_points, known_markers=False):
     """
-    Creates teh scatter plot
+    Creates the scatter plot
 
     Args:
         df (DataFrame): Thee data to be plotted
@@ -157,7 +157,7 @@ def significant_genes (row, labels):
 
 def add_sig(df):
     """ 
-    Functions that classifies the genes if are significant to one of the groups comparede in the DEA.
+    Functions that classifies the genes if are significant to one of the groups compared in the DEA.
 
     Args:
         df (DataFrame): The data used
