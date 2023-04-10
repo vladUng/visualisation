@@ -241,7 +241,7 @@ layout = html.Div(children=[
             """),
             html.Pre(id='click-data-scatter', style=styles['pre'])   
         ]),
-    html.Div(style={"column-count": "1"}, children = [
+    html.Div(style={"column-count": "2"}, children = [
         dcc.Markdown("""
             **Pi Plot selected Genes**
                 Genes that were clicked in the pi plot

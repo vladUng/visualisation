@@ -159,7 +159,7 @@ def add_anottations(first_df, second_df, dummy_df, fig):
 
 def show_selected_genes_pi(df_1, df_2, fig, selected_genes):
     custom_traces = shared.create_custom_traces(selected_genes)
-    colors =  px.colors.qualitative.Bold + px.colors.qualitative.Vivid 
+    colors =  px.colors.qualitative.Bold + px.colors.qualitative.Vivid  + px.colors.qualitative.Pastel + px.colors.qualitative.Bold
     for idx, trace in enumerate(custom_traces): 
         fig.add_trace(shared.create_gene_trace(df_1, trace["genes"], name=trace["title"], marker_color=colors[idx], df_2=df_2))
 

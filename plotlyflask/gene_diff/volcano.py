@@ -73,7 +73,9 @@ def draw_volcano(df, fold_changes, selected_data, selected_genes):
         # finding the selected point
         selected_points = [gene["customdata"] for gene in selected_data["points"]]
         selected_idxs = df[df["genes"].isin(selected_points)].index
+        # fig.update_traces(selectedpoints=selected_idxs, mode='markers+text', unselected={'marker': { 'opacity': 0.3 },  "textfont": {"color": "rgba(0, 0, 0, 0)"} })
         fig.update_traces(selectedpoints=selected_idxs, mode='markers', unselected={'marker': { 'opacity': 0.3 } })
+
     else:
         selection_bounds = {'x0': np.min(df[x_col] - 2), 'x1': np.max(df[x_col] + 2),
                             'y0': np.min(df[y_col] - 2), 'y1': np.max(df[y_col]) + 2}
@@ -91,7 +93,7 @@ def draw_volcano(df, fold_changes, selected_data, selected_genes):
 
 def show_selected_genes_vulcano(df, selected_genes, fig):
     custom_traces = shared.create_custom_traces(selected_genes=selected_genes)
-    colors =  px.colors.qualitative.Bold + px.colors.qualitative.Vivid 
+    colors =  px.colors.qualitative.Bold + px.colors.qualitative.Vivid  + px.colors.qualitative.Pastel 
     
     for idx, trace in enumerate(custom_traces): 
         
