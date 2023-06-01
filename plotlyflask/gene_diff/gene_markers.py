@@ -9,6 +9,40 @@
 @Desc    :   File to put genes that are show in the DEA/Pi/Scatter plot
 '''
 
+def add_uroth_bladder_cancer(custom_traces):
+    """
+
+    These genes were selected by Ryan and are out of interests in bladder/urothelium 
+
+    Args:
+        custom_traces (_type_): _description_
+    """
+
+    tf_diff = ["P63", "FOXA1","PPARG", "RARG", "IRF1", "ELF3", "GRHL3", "KLF5", "GATA4", "GATA6", "GATA3"]
+    egfr_fam = ["EGFR", "ERBB2", "ERBB3", "ERBB4", "EGF", "AREG", "HBEGF","TGFA","BTC", "EREG"]
+    fgfr_fam = ["FGFR1", "FGFR2", "FGFR3", "FGF1", "FGF2"]
+    map_kpathway = ["RAS", "RAF", "MEK1", "MEK2", "MEK3", "MEK4","ERK"]
+    pi3_kpathway = ["PIK3C3", "PIK3R2", "PIK3C2B", "AKT1", "AKT2"]
+    krt = ["KRT13", "KRT14", "KRT15", "KRT20"]
+    cld = ["CLDN3", "CLDN4", "CLDN5" ]
+    others = ["MKI67", "MCM2", "UPK3A", "ZO1", "TJP1", "ZO2", "TJP2", "ZO3", "TJP3"]
+    hox_ur = ["HOXB2", "HOXB3", "HOXB5", "HOXB6", "HOXB8"]
+    hox_bla = ["HOXA9", "HOXA10", "HOXA11", "HOXA13"]
+
+
+    custom_traces.append({"genes": tf_diff, "title": "TF Diff"})
+    custom_traces.append({"genes": egfr_fam, "title": "EGFR fam"})
+    custom_traces.append({"genes": fgfr_fam, "title": "FGFR fam"})
+    custom_traces.append({"genes": map_kpathway, "title": "MAP kin"})
+    custom_traces.append({"genes": pi3_kpathway, "title": "PI3 kin"})
+    custom_traces.append({"genes": krt, "title": "Diff markers"})
+    custom_traces.append({"genes": cld, "title": "Urothelial diff"})
+    custom_traces.append({"genes": hox_ur, "title": "Hox ureteric"})
+    custom_traces.append({"genes": hox_bla, "title": "Hox bladder"})
+
+    return custom_traces
+
+
 def gc42_high_genes(custom_traces):
 
     lump = ['AQP3', 'IGLC2', 'DHRS2', 'MAOA', 'TMPRSS4', 'GPX2', 'HPGD', 'VSIG2', 'SPINK1', 'TBX3', 'PSCA', 'UPK2']
@@ -49,10 +83,10 @@ def gc42_uniq_genes(custom_traces):
     large_basal=['FKBP5', 'CDK5R1', 'ANO1', 'KLC3', 'ENSG00000290574', 'LRIG3', 'TGM1', 'MAFB', 'CSPG4', 'CLEC2B', 'TRIM22', 'S1PR5', 'IL20RB', 'HLA-DOA', 'OLR1', 'FAP', 'IL15RA', 'GJB5', 'ADAM19', 'LINC01013', 'TRIM7', 'DCBLD2', 'STC1', 'SLC38A5', 'HS3ST1']
     lumInf_ns=['QPCT', 'EDARADD', 'PTGDS', 'ASPN', 'BEX2', 'C3orf14', 'PRSS27', 'CAPN12', 'ENTPD3', 'ALDH3B1', 'ANXA9', 'SUSD2', 'GATM', 'FHL1', 'DAB2', 'SECTM1', 'RDX', 'TMEM125', 'SELL', 'ACER2', 'FADS1', 'RHPN2', 'SPOCK2', 'CFD', 'NCF4']
 
-    custom_traces.append({"genes": lump, "title": "LumP uniq"})
-    custom_traces.append({"genes": lumInf_ns, "title": "LumInf/NS uniq"})
-    custom_traces.append({"genes": large_basal, "title": "Large Ba/Sq uniq"})
-    custom_traces.append({"genes": small_basal, "title": "Small Ba/Sq uniq"})
+    custom_traces.append({"genes": lump, "title": "Uniq LumP"})
+    custom_traces.append({"genes": lumInf_ns, "title": "Uniq LumInf/NS"})
+    custom_traces.append({"genes": large_basal, "title": "Uniq Large Ba/Sq"})
+    custom_traces.append({"genes": small_basal, "title": "Uniq Small Ba/Sq"})
     custom_traces.append({"genes": ne, "title": "NE uniq"})
 
     return custom_traces 
