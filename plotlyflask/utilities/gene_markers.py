@@ -9,7 +9,6 @@
 @Desc    :   File to put genes that are show in the DEA/Pi/Scatter plot
 '''
 
-
 def add_tcga_markers(custom_traces):
 
     luminal_markers = ["KRT20", "PPARG", "FOXA1", "GATA3", "SNX31", "UPK1A", "UPK2", "FGFR3"]
@@ -215,5 +214,3 @@ def low_significant_genes(custom_traces):
     custom_traces.append({"genes": all_genes & set(lumInf), "title": "Lowest lumInf"})
 
     return custom_traces
-
-

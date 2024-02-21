@@ -49,12 +49,11 @@ def plt_scatter(df, selected_points, known_markers=False):
 
     if known_markers:
         custom_traces = shared.create_custom_traces()
-        colors =  px.colors.qualitative.Bold + px.colors.qualitative.Vivid  + px.colors.qualitative.Pastel 
         marker_size = 12
         for idx, trace in enumerate(custom_traces): 
             selected_df = df[df["genes"].isin(trace["genes"])]
 
-            markers = {"size": marker_size, "color": selected_df.shape[0] * [colors[idx]], "symbol": "x"}
+            markers = {"size": marker_size, "color": selected_df.shape[0] * [shared.colors[idx]], "symbol": "x"}
             trace = dict(type='scatter', x=selected_df[clusters[0]], y=selected_df[clusters[1]],  showlegend=True, marker=markers, text=selected_df["genes"], mode="markers+text" , name=trace["title"],  textposition="top right", visible="legendonly")
 
             fig.add_trace(trace)

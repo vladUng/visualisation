@@ -3,8 +3,9 @@ import webbrowser
 
 import dash
 from dash import dcc, html
+from threading import Timer
 
-from plotlyflask.umap import umap as mf
+# from plotlyflask.umap import umap as mf
 from plotlyflask.gene_diff import gene_diff as gd
 from plotlyflask.gene_viz import gene_viz as gv
 from plotlyflask.plotlydash.main import app
@@ -32,16 +33,16 @@ def display_page(pathname):
         return gv.layout
     if pathname == '/gene-diff':
         return gd.layout
-    if pathname == '/manyfold':
-        return mf.layout
+    # if pathname == '/manyfold':
+    #     return mf.layout
     else:
         return index_page
 
 def open_browser():
     # webbrowser.open_new('http://127.0.0.1:8080/dashapp')
     webbrowser.open_new('http://127.0.0.1:8080/gene-diff')
-
+    
 if __name__ == "__main__":
-    #     Timer(1, open_browser).start()w
+    # Timer(1, open_browser).start()
     app.server.run(host='0.0.0.0', port=8080, debug=True)
 

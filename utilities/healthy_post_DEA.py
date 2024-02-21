@@ -182,7 +182,7 @@ def prep_for_volcano(tcga_tpm_df, mapping_cols, base_path, results_path, info_fi
     cluster_labels = pd_for_diff[cluster_label].unique()
     new_labels = []
     for label in cluster_labels:
-        new_labels.append("cluster_{}".format(label))
+        new_labels.append(f"{label}")
         fold_change[new_labels[-1] + "_med"] = df[df["cluster"] == label].iloc[:, :-1].median().values
         fold_change[new_labels[-1]] = df[df["cluster"] == label].iloc[:, :-1].mean().values
 

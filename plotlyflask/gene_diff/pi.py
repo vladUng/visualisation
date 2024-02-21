@@ -59,7 +59,7 @@ def draw_pi_plot(df_1, df_2, filename_1, filename_2, selected_data, selected_gen
     first_df.rename(columns={"group": "comp_1"}, inplace=True)
     second_df.rename(columns={"group": "comp_2"}, inplace=True)
 
-    dummy_df = pd.concat([first_df[["x", "comp_1"]], second_df[["y", "comp_2"]]], axis=1).fillna(0).reset_index().rename(columns={"index":"genes"})
+    dummy_df = pd.concat([first_df[["x", "comp_1"]], second_df[["y", "comp_2"]]], axis=1).reset_index().rename(columns={"index":"genes"})
     
     dummy_df["main_colour"] = "PI_plot"
     # show in the hover everything apart from the main_colour column
@@ -159,8 +159,7 @@ def add_anottations(first_df, second_df, dummy_df, fig):
 
 def show_selected_genes_pi(df_1, df_2, fig, selected_genes):
     custom_traces = shared.create_custom_traces(selected_genes)
-    colors =  px.colors.qualitative.Bold + px.colors.qualitative.Vivid  + px.colors.qualitative.Pastel + px.colors.qualitative.Bold
     for idx, trace in enumerate(custom_traces): 
-        fig.add_trace(shared.create_gene_trace(df_1, trace["genes"], name=trace["title"], marker_color=colors[idx], df_2=df_2))
+        fig.add_trace(shared.create_gene_trace(df_1, trace["genes"], name=trace["title"], marker_color=shared.colors[idx], df_2=df_2))
 
     return fig 

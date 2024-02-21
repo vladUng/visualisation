@@ -2,11 +2,15 @@ import numpy as np
 import pandas as pd
 
 from plotlyflask.gene_diff import gene_markers as gm 
+from plotlyflask.gene_diff import gene_markers_iNet2 as gm_2
+
+import plotly.express as px
 
 import time
 
 from os import path
 
+colors =  px.colors.qualitative.Bold + px.colors.qualitative.Vivid  + px.colors.qualitative.Alphabet + px.colors.qualitative.Dark24  + px.colors.qualitative.Light24 + px.colors.qualitative.T10 + px.colors.qualitative.Set3 + px.colors.qualitative.Set1
 
 
 def create_custom_traces(selected_genes = None):
@@ -37,11 +41,13 @@ def create_custom_traces(selected_genes = None):
     # custom_traces = gm.significant_genes(custom_traces=custom_traces)
     # custom_traces = gm.low_significant_genes(custom_traces=custom_traces)
 
-    custom_traces = gm.add_tcga_markers(custom_traces=custom_traces)
-    custom_traces = gm.add_uroth_bladder_cancer(custom_traces=custom_traces)
-    custom_traces = gm.gc42_uniq_genes(custom_traces=custom_traces)
-    custom_traces = gm.gc42_high_genes(custom_traces=custom_traces)
-    custom_traces = gm.gc42_low_genes(custom_traces=custom_traces)
+    # custom_traces = gm.add_tcga_markers(custom_traces=custom_traces)
+    # custom_traces = gm.add_uroth_bladder_cancer(custom_traces=custom_traces)
+    # custom_traces = gm.gc42_uniq_genes(custom_traces=custom_traces)
+    # custom_traces = gm.gc42_high_genes(custom_traces=custom_traces)
+    # custom_traces = gm.gc42_low_genes(custom_traces=custom_traces)
+
+    custom_traces = gm_2.add_com_markers_raw(custom_traces=custom_traces)
 
     return custom_traces
 
