@@ -70,7 +70,7 @@ def import_data(fullPath):
     start_time = time.time()
     if path.exists(fullPath):
         ret_dict = {}
-        ret_dict["data"] = pd.read_csv(fullPath, delimiter="\t")
+        ret_dict["data"] = pd.read_csv(fullPath, delimiter="\t", dtype_backend='pyarrow')
         print("Finished loading the data in {}".format(time.time()-start_time))
         return ret_dict
     else:
