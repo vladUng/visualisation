@@ -54,7 +54,8 @@ def select_genes(tpm_df, no_genes = 3347, relative_selection = True):
     dummy_df = np.log2(tpm_df.set_index("genes") + 1).reset_index()
 
     # remove all the genes w/ that have a lower expression value from `th` in `>10%` across the samples
-    dummy_df = filter_data(dummy_df, th=np.log2(1.5), at_least_good_cols=dummy_df.shape[1]*0.9, idx_cols=["genes"])
+    good_th = 0.05
+    dummy_df = filter_data(dummy_df, th=np.log2(1.5), at_least_good_cols=dummy_df.shape[1]*good_th, idx_cols=["genes"])
 
     # make all the  values float
     dummy_df.set_index("genes", inplace=True)
@@ -165,9 +166,13 @@ def prep_for_volcano(tcga_tpm_df, mapping_cols, base_path, results_path, info_fi
     # Create the new DataFrame and apply log2(TPM+1)
     dummy_df = pd.concat([pd.DataFrame(tcga_tpm_df["genes"]), pd.DataFrame(np.log2(tcga_tpm_df.iloc[:, 1:] + 1))], axis=1)
 
+    # Difference between sleuth
+    print(f"Diff between sleuth and all GE: {len(set(sleuth_results['Genes']) - set(tcga_tpm_df['genes']))}")
+    print(f"Diff between GE and sleuth: {len(set(tcga_tpm_df['genes']) - set(sleuth_results['Genes']))}")
+
     # Select only the genes used in Sleuth
     df = dummy_df[dummy_df["genes"].isin(sleuth_results["Genes"])]
-    df.rename(columns=mapping_cols, inplace=True)
+    # df.rename(columns=mapping_cols, inplace=True)
     df = df[["genes"] +  list(pd_for_diff["sample"].values)]
     df = df.set_index("genes").transpose()
     df.index.names = ["sample"]
@@ -222,10 +227,8 @@ viking_output = path.join(base_path, f"{version}")
 # cluster_label = "RawKMeans_CS_5"
 
 # Read the data
-tpm_df = pd.read_csv(f"{base_path}/{version}/healthy_data_10k_gc42_v3.tsv", sep="\t").rename(columns={'gene':'genes'})
-most_varied_genes = select_genes(tpm_df, no_genes=5000)
-# mapping_cols = create_map_cols(tpm_df)
-mapping_cols={}
+tpm_df = pd.read_csv(f"{base_path}/{version}/healthy_data_all_gc42_v4.tsv", sep="\t").rename(columns={'gene':'genes'})
+
 
 raw_files = next(walk(f"{viking_output}/results/"), (None, None, []))[2]
 experiments = [file.split("_results")[0] for file in raw_files]
@@ -240,13 +243,13 @@ sel_cols = ["genes", "group", "pi", 'fold_change', '-log10(q)', "exp"]
 for exp in experiments:
     if exp == '.DS_Store':
         continue
-
+    print(f"\n###### {exp} ######")
     results_path = f"{viking_output}/results/{exp}_results.tsv"
     info_file = f"{viking_output}/info/{exp}.info"
-    output_file = f"{viking_output}/results/{exp}_vulcano_labels.tsv"
+    output_file = f"{viking_output}/results/labels/{exp}_v4_vulcano_labels.tsv"
     
-    df = prep_for_volcano(tpm_df, mapping_cols, "", results_path, info_file, output_file, save_file=True, cluster_label='tissue_type')
+    df = prep_for_volcano(tpm_df, {}, "", results_path, info_file, output_file, save_file=True, cluster_label='tissue_type')
     df["exp"] = exp
-    df = df.loc[df["genes"].isin(most_varied_genes)]
+    # df = df.loc[df["genes"].isin(most_varied_genes)]
     master_df = pd.concat([master_df, df[sel_cols]], axis=0)
     dfs["_".join(exp.split("_")[:-1])] = df

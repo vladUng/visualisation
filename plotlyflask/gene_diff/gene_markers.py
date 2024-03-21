@@ -19,24 +19,26 @@ def add_uroth_bladder_cancer(custom_traces):
     """
 
     tf_diff = ["P63", "FOXA1","PPARG", "RARG", "IRF1", "ELF3", "GRHL3", "KLF5", "GATA4", "GATA6", "GATA3"]
+    krt = ["KRT13", "KRT14", "KRT15", "KRT20"]
+    upk = ["UPK1B", "UPK1A", "UPK3A", "UPK2"]
+    cld = ["CLDN3", "CLDN4", "CLDN5" ]
     egfr_fam = ["EGFR", "ERBB2", "ERBB3", "ERBB4", "EGF", "AREG", "HBEGF","TGFA","BTC", "EREG"]
     fgfr_fam = ["FGFR1", "FGFR2", "FGFR3", "FGF1", "FGF2"]
     map_kpathway = ["RAS", "RAF", "MEK1", "MEK2", "MEK3", "MEK4","ERK"]
     pi3_kpathway = ["PIK3C3", "PIK3R2", "PIK3C2B", "AKT1", "AKT2"]
-    krt = ["KRT13", "KRT14", "KRT15", "KRT20"]
-    cld = ["CLDN3", "CLDN4", "CLDN5" ]
     others = ["MKI67", "MCM2", "UPK3A", "ZO1", "TJP1", "ZO2", "TJP2", "ZO3", "TJP3"]
     hox_ur = ["HOXB2", "HOXB3", "HOXB5", "HOXB6", "HOXB8"]
     hox_bla = ["HOXA9", "HOXA10", "HOXA11", "HOXA13"]
 
+    diff_markers = tf_diff + cld + krt + upk
 
-    custom_traces.append({"genes": tf_diff, "title": "TF Diff"})
+    custom_traces.append({"genes": diff_markers, "title": "Diff markers"})
     custom_traces.append({"genes": egfr_fam, "title": "EGFR fam"})
     custom_traces.append({"genes": fgfr_fam, "title": "FGFR fam"})
     custom_traces.append({"genes": map_kpathway, "title": "MAP kin"})
     custom_traces.append({"genes": pi3_kpathway, "title": "PI3 kin"})
-    custom_traces.append({"genes": krt, "title": "Diff markers"})
-    custom_traces.append({"genes": cld, "title": "Urothelial diff"})
+    # custom_traces.append({"genes": krt, "title": "Diff markers"})
+    # custom_traces.append({"genes": cld, "title": "Urothelial diff"})
     custom_traces.append({"genes": hox_ur, "title": "Hox ureteric"})
     custom_traces.append({"genes": hox_bla, "title": "Hox bladder"})
 
