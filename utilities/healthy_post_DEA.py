@@ -172,15 +172,18 @@ def prep_for_volcano(tcga_tpm_df, mapping_cols, base_path, results_path, info_fi
 
     # Select only the genes used in Sleuth
     df = dummy_df[dummy_df["genes"].isin(sleuth_results["Genes"])]
-    # df.rename(columns=mapping_cols, inplace=True)
-    df = df[["genes"] +  list(pd_for_diff["sample"].values)]
-    df = df.set_index("genes").transpose()
+
+    # Add the missing values 
+    sleuth_results = pd.concat([sleuth_results.set_index('Genes'), dummy_df.set_index('genes')], axis=1).fillna(1)
+
+    # just keep the sample columns
+    df = sleuth_results[dummy_df.columns[1:]].transpose().copy(deep=True)
     df.index.names = ["sample"]
 
     # set the cluster
     df["cluster"] = pd_for_diff.set_index("sample")[cluster_label]
 
-    print("Are arrays in sync? {}".format(np.array_equal(df.iloc[:, -1].reset_index(), pd_for_diff[["sample", cluster_label]])) )
+    # print("Are arrays in sync? {}".format(np.array_equal(df.iloc[:, -1].reset_index(), pd_for_diff[["sample", cluster_label]])) )
 
     # calculate the median and avg TPM values
     fold_change = pd.DataFrame(df.columns[:-1], columns=["genes"])
@@ -191,9 +194,11 @@ def prep_for_volcano(tcga_tpm_df, mapping_cols, base_path, results_path, info_fi
         fold_change[new_labels[-1] + "_med"] = df[df["cluster"] == label].iloc[:, :-1].median().values
         fold_change[new_labels[-1]] = df[df["cluster"] == label].iloc[:, :-1].mean().values
 
+    fold_change.set_index("genes", inplace=True)
+
     # compute the fold change
-    fold_change["fold_change_med"] = fold_change.iloc[:, 1] - fold_change.iloc[:, 3]
-    fold_change["fold_change"] = fold_change.iloc[:, 2] - fold_change.iloc[:, 4]
+    fold_change["fold_change_med"] = fold_change.iloc[:, 0] - fold_change.iloc[:, 2]
+    fold_change["fold_change"] = fold_change.iloc[:, 1] - fold_change.iloc[:, 3]
 
 
     # assign the cluster labels
@@ -201,8 +206,6 @@ def prep_for_volcano(tcga_tpm_df, mapping_cols, base_path, results_path, info_fi
     fold_change.loc[fold_change["fold_change"] < 0, "group"] = new_labels[1]
     fold_change["-log10(q)"] = -np.log10(sleuth_results["q-value"])
 
-    fold_change.set_index("genes", inplace=True)
-    sleuth_results.set_index("Genes", inplace=True)
     
     # Add the data from sleuth to the output file
     fold_change["q"] = sleuth_results["q-value"]
