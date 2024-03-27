@@ -174,7 +174,11 @@ def prep_for_volcano(tcga_tpm_df, mapping_cols, base_path, results_path, info_fi
     df = dummy_df[dummy_df["genes"].isin(sleuth_results["Genes"])]
 
     # Add the missing values 
-    sleuth_results = pd.concat([sleuth_results.set_index('Genes'), dummy_df.set_index('genes')], axis=1).fillna(1)
+    sleuth_results = pd.concat([sleuth_results.set_index('Genes'), dummy_df.set_index('genes')], axis=1)
+    sleuth_results['q-value'] = sleuth_results['q-value'].fillna(1)
+    sleuth_results['p-value'] = sleuth_results['p-value'].fillna(1)
+    # Bellow is dropping the genes that are found only in DEA and not in the expressed genes
+    sleuth_results.dropna(inplace=True)
 
     # just keep the sample columns
     df = sleuth_results[dummy_df.columns[1:]].transpose().copy(deep=True)
