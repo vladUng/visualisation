@@ -46,31 +46,43 @@ def create_custom_traces(selected_genes = None):
 
     custom_traces = gm_2.add_com_markers_raw(custom_traces=custom_traces, data_type='median')
     custom_traces = gm_2.add_com_markers_raw(custom_traces=custom_traces)
-
     # custom_traces = gm.gc42_uniq_genes(custom_traces=custom_traces)
     # custom_traces = gm.gc42_high_genes(custom_traces=custom_traces)
     # custom_traces = gm.gc42_low_genes(custom_traces=custom_traces)
+
+    # Sel tfs
+    custom_traces = gm.add_sel_tf(custom_traces=custom_traces)
 
 
     return custom_traces
 
 def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", marker_size=12, df_2=None): 
-
-    selected_df = df[df["genes"].isin(genes)]
-
-    x, y = [], []
+    
+    x, y, gene_txt = [], [],[]
     if df_2 is None:
+        # For volcano - genes is a separate column
+        selected_df = df[df["genes"].isin(genes)]
         y = -np.log10(selected_df["q"])
         x = selected_df['fold_change']
+        gene_txt = selected_df['genes']
     else:
-        selected_df_2 = df_2[df_2["genes"].isin(genes)]
+        # for pi plot - genes are in the index
+        selected_df = df[df.index.isin(genes)]
+        selected_df_2 = df_2[df_2.index.isin(genes)]
         
-        x = -np.log10(selected_df["q"]) * selected_df["fold_change"]
-        y = -np.log10(selected_df_2["q"]) * selected_df_2["fold_change"]
+        selected_df['pi_x'] = -np.log10(selected_df["q"]) * selected_df["fold_change"]
+        selected_df_2['pi_y'] = -np.log10(selected_df_2["q"]) * selected_df_2["fold_change"]
+        dmy_df = pd.concat([selected_df_2, selected_df], axis=1)
+        x = dmy_df['pi_x']
+        y = dmy_df['pi_y']
 
-    markers = {"size": marker_size, "color": selected_df.shape[0] * [marker_color], "symbol": "x" }
+        gene_txt  = dmy_df.index
+        # if dmy_df.shape[0] != len(genes):
+        #     print("\n\n### Genes not found for PI ", list(set(genes) - set(gene_txt)))
 
-    trace = dict(type='scatter', x=x, y= y,  showlegend=True, marker=markers, text=selected_df["genes"], mode="markers+text" , name=name, textposition= 'top center', visible="legendonly")
+
+    markers = {"size": marker_size, "color": selected_df.shape[0] * [marker_color],  "symbol": "x" }
+    trace = dict(type='scatter', x=x, y= y,  showlegend=True, marker=markers, text=gene_txt, mode="markers+text" , name=name,  textposition='top center', visible="legendonly")
 
     return trace
 
