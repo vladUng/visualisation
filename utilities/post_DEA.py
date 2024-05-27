@@ -11,25 +11,9 @@
 import pandas as pd 
 import numpy as np
 
-from os import walk, path, makedirs
+from os import walk, path
 
-def create_map_cols(tcga_tpm_df):
-    """
-     Remove the -01B and -01A - this needs to be run only once
-
-    Args:
-        tcga_tpm_df ([DataFrame]): where to remove
-
-    Returns:
-        [Dict]: Dictionary of the old vs new col name
-    """
-    mapping_cols = {}
-    mapping_cols["genes"] = "genes"
-    for col in tcga_tpm_df.columns.values[1:]:
-        mapping_cols[col] = "-".join(col.split("-")[:-1])
-    return mapping_cols
-
-def prep_for_volcano(tcga_tpm_df, base_path, results_path, info_file, output_file, save_file = False):
+def prep_for_volcano(tcga_tpm_df, results_path, info_file, output_file, save_file = False, cluster_label='express'):
     """
     Function that creates the file necessary for the volcano and scatter plots in the Visualisation tool.
     
@@ -55,7 +39,7 @@ def prep_for_volcano(tcga_tpm_df, base_path, results_path, info_file, output_fil
         DataFrame: Resulting DataFrame
     """
     sleuth_results = pd.read_csv(results_path, sep="\t", names=["Genes", "p-value", "q-value"])
-    pd_for_diff = pd.read_csv(base_path + info_file, sep="\t")
+    pd_for_diff = pd.read_csv(info_file, sep="\t")
 
     # Create the new DataFrame and apply log2(TPM+1)
     dummy_df = pd.concat([pd.DataFrame(tcga_tpm_df["genes"]), pd.DataFrame(np.log2(tcga_tpm_df.iloc[:, 1:] + 1))], axis=1)
@@ -72,13 +56,13 @@ def prep_for_volcano(tcga_tpm_df, base_path, results_path, info_file, output_fil
     df.index.names = ["sample"]
 
     # set the cluster
-    df["cluster"] = pd_for_diff.set_index("sample")["express"]
+    df["cluster"] = pd_for_diff.set_index("sample")[cluster_label]
 
-    print("Are arrays in sync? {}".format(np.array_equal(df.iloc[:, -1].reset_index(), pd_for_diff[["sample", "express"]])) )
+    print("Are arrays in sync? {}".format(np.array_equal(df.iloc[:, -1].reset_index(), pd_for_diff[["sample", cluster_label]])) )
 
     # calculate the median and avg TPM values
     fold_change = pd.DataFrame(df.columns[:-1], columns=["genes"])
-    cluster_labels = pd_for_diff["express"].unique()
+    cluster_labels = pd_for_diff[cluster_label].unique()
     new_labels = []
     for label in cluster_labels:
         new_labels.append("cluster_{}".format(label))
@@ -106,7 +90,7 @@ def prep_for_volcano(tcga_tpm_df, base_path, results_path, info_file, output_fil
     fold_change.rename(columns={"index":"genes"}, inplace=True)
     
     if save_file:
-        fold_change.to_csv(base_path + output_file,  index=False, sep="\t")
+        fold_change.to_csv(output_file,  index=False, sep="\t")
         
     return fold_change
 
@@ -123,17 +107,20 @@ tpm_df = pd.read_csv("../data/sel_prun/tum_TPMs_selected_genes_gc42_all_v4.tsv",
 
 raw_files = next(walk(viking_output), (None, None, []))[2]
 experiments = [file.split("_results")[0] for file in raw_files]
-# experiments.remove(".DS_Store")
+
+labels_value = {13:"LumP", 12:"LumInf", 4:"Large_BaSq",  5:"Small_BaSq", 3: "Mes-like"}
 
 dfs = {}
 master_df = pd.DataFrame()
 sel_cols = ["genes", "group", "pi", 'fold_change', '-log10(q)', "exp"]
 for exp in experiments:
+    if exp == '.DS_Store':
+        continue
     results_path = f"{viking_output}/{exp}_results.tsv"
     info_file = f"{base_path}/info_files/{exp}.info"
     output_file = f"{viking_output}/{exp}_vulcano_labels.tsv"
     
-    df = prep_for_volcano(tpm_df, '', results_path, info_file, output_file, save_file=True)
+    df = prep_for_volcano(tpm_df, results_path, info_file, output_file, save_file=True, cluster_label='dendrogram_label')
     df["exp"] = exp
     master_df = pd.concat([master_df, df[sel_cols]], axis=0)
     dfs["_".join(exp.split("_")[:-1])] = df

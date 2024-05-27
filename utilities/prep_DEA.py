@@ -14,7 +14,7 @@ from itertools import combinations
 from collections import Counter
 from os import path, makedirs 
 
-def prepare_for_viking(base_path, file_name, tpm_df, cluster="RawKMeans_CS_5", h5_path="./01_h5_files/"):
+def prepare_for_viking(base_path, file_name, tpm_df, cluster="RawKMeans_CS_5", cluster_label='dendrogram_label', h5_path="./01_h5_files/"):
     """
     Function the pre-process a DataFrame for running Differentially Expressed Analysis with sleuth.
 
@@ -27,7 +27,7 @@ def prepare_for_viking(base_path, file_name, tpm_df, cluster="RawKMeans_CS_5", h
     Returns:
         DataFrame: The resulting DataFrame.
     """
-    df = pd.DataFrame(tpm_df[["Sample", cluster]].values, columns=["sample", "express"])
+    df = pd.DataFrame(tpm_df[["Sample", cluster, cluster_label]].values, columns=["sample", "express", cluster_label])
 
     df["path"] = h5_path + df["sample"] + "-01A/"+ "abundance.h5"
     # In TCGA there are some patients where they have been sampled or their sample was sequenced twice (1st-A, 2nd-B). We want to keep the latest (B)
@@ -47,7 +47,8 @@ def prepare_for_viking(base_path, file_name, tpm_df, cluster="RawKMeans_CS_5", h
 # base_path = "../../results/Stage I/gc42/"
 base_path = '../data/sel_prun/'
 filename = "morph_cs_v1.tsv"
-cluster_label = "dendrogram_cut"
+cluster_model = "dendrogram_cut" #it needs to be numeric
+cluster_label = 'dendrogram_label'
 version = "v1"
 h5_path = '/mnt/scratch/projects/biol-cancerinf-2020/Raw-Data/TCGA/BLCA/01_RNAseq/kallisto-gencode-v42/'
 
@@ -55,15 +56,15 @@ h5_path = '/mnt/scratch/projects/biol-cancerinf-2020/Raw-Data/TCGA/BLCA/01_RNAse
 labels_value = {13:"LumP", 12:"LumInf", 4:"Large_BaSq",  5:"Small_BaSq", 3: "Mes-like"}
 
 # create the apropiate subfolders
-base_path_results = path.join(base_path, version + "/")
+base_path_results = path.join(base_path + version + "/info_files/")
 if not path.exists(base_path_results):
     makedirs(base_path_results)
 
 # Read the data
 outputs = pd.read_csv(base_path + filename, index_col='Sample', sep="\t")
 
-counter_values = Counter(outputs[cluster_label]) #for verifying
-unique_values = outputs[cluster_label].unique()
+counter_values = Counter(outputs[cluster_model]) #for verifying
+unique_values = outputs[cluster_model].unique()
 
 unique_values.sort()
 
@@ -72,10 +73,10 @@ for comb in list(combinations(unique_values, 2)):
     filename = f"{cluster_1}_vs_{cluster_2}_{version}.info"
     print("###Combinations {} for {}. Test the number of samples for each group:".format(comb, filename))
 
-    to_save = pd.concat([outputs.loc[outputs[cluster_label] == comb[0]], outputs.loc[outputs[cluster_label] == comb[1]]])
+    to_save = pd.concat([outputs.loc[outputs[cluster_model] == comb[0]], outputs.loc[outputs[cluster_model] == comb[1]]])
     
     # We just check that the number of samples is the same in both cases 
-    to_check = Counter(to_save[cluster_label])
+    to_check = Counter(to_save[cluster_model])
     total_before = counter_values[comb[0]] +  counter_values[comb[1]]
     total_after = to_check[comb[0]] + to_check[comb[1]]
     if total_before != total_after and not to_save.isnull().values.any():
@@ -86,4 +87,4 @@ for comb in list(combinations(unique_values, 2)):
     else:
         print("✅ {}".format(filename))
 
-    df = prepare_for_viking(base_path_results, file_name=filename, tpm_df=to_save.reset_index(), cluster=cluster_label, h5_path=h5_path)
+    df = prepare_for_viking(base_path_results, file_name=filename, tpm_df=to_save.reset_index(), cluster=cluster_model, cluster_label = cluster_label,h5_path=h5_path)
