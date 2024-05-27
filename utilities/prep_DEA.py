@@ -14,7 +14,7 @@ from itertools import combinations
 from collections import Counter
 from os import path, makedirs 
 
-def prepare_for_viking(base_path, file_name, tpm_df, cluster="RawKMeans_CS_5"):
+def prepare_for_viking(base_path, file_name, tpm_df, cluster="RawKMeans_CS_5", h5_path="./01_h5_files/"):
     """
     Function the pre-process a DataFrame for running Differentially Expressed Analysis with sleuth.
 
@@ -29,35 +29,38 @@ def prepare_for_viking(base_path, file_name, tpm_df, cluster="RawKMeans_CS_5"):
     """
     df = pd.DataFrame(tpm_df[["Sample", cluster]].values, columns=["sample", "express"])
 
-    df["path"] = "./01_h5_files/" + df["sample"] + "-01A_abundance.h5"
+    df["path"] = h5_path + df["sample"] + "-01A/"+ "abundance.h5"
     # In TCGA there are some patients where they have been sampled or their sample was sequenced twice (1st-A, 2nd-B). We want to keep the latest (B)
-    df.loc[df["sample"] == "TCGA-BL-A0C8", "path"] = "./01_h5_files/TCGA-BL-A0C8-01B_abundance.h5"
-    df.loc[df["sample"] == "TCGA-BL-A13I", "path"] = "./01_h5_files/TCGA-BL-A13I-01B_abundance.h5"
-    df.loc[df["sample"] == "TCGA-BL-A13J", "path"] = "./01_h5_files/TCGA-BL-A13J-01B_abundance.h5"
-    df.loc[df["sample"] == "TCGA-GV-A3QK", "path"] = "./01_h5_files/TCGA-GV-A3QK-01B_abundance.h5"
-    df.loc[df["sample"] == "TCGA-K4-A3WU", "path"] = "./01_h5_files/TCGA-K4-A3WU-01B_abundance.h5"
-    df.loc[df["sample"] == "TCGA-K4-A4AB", "path"] = "./01_h5_files/TCGA-K4-A4AB-01B_abundance.h5"
+    df.loc[df["sample"] == "TCGA-BL-A0C8", "path"] = f"{h5_path}/TCGA-BL-A0C8-01B/abundance.h5"
+    df.loc[df["sample"] == "TCGA-BL-A13I", "path"] = f"{h5_path}/TCGA-BL-A13I-01B/abundance.h5"
+    df.loc[df["sample"] == "TCGA-BL-A13J", "path"] = f"{h5_path}/TCGA-BL-A13J-01B/abundance.h5"
+    df.loc[df["sample"] == "TCGA-GV-A3QK", "path"] = f"{h5_path}/TCGA-GV-A3QK-01B/abundance.h5"
+    df.loc[df["sample"] == "TCGA-K4-A3WU", "path"] = f"{h5_path}/TCGA-K4-A3WU-01B/abundance.h5"
+    df.loc[df["sample"] == "TCGA-K4-A4AB", "path"] = f"{h5_path}/TCGA-K4-A4AB-01B/abundance.h5"
 
     df.to_csv(base_path + file_name, index=False, sep="\t")
     return df
 
 # Define the inputs
-### base_path - input; base_path_results - output
-base_path = "../../results/Stage I/gc42/"
-filename = "VU_clustering.tsv"
-cluster_label = "RawKMeans_42_CS_5"
-version = "v5.1"
+### base_path - input; 
+# base_path_results - output
+# base_path = "../../results/Stage I/gc42/"
+base_path = '../data/sel_prun/'
+filename = "morph_cs_v1.tsv"
+cluster_label = "dendrogram_cut"
+version = "v1"
+h5_path = '/mnt/scratch/projects/biol-cancerinf-2020/Raw-Data/TCGA/BLCA/01_RNAseq/kallisto-gencode-v42/'
 
 # Mapping; Sleuth only accepts integers 
-labels_value = {0:"LumP", 1:"LumInf_NS", 2:"Large_BaSq",  3:"Small_BaSq", 4: "Mixed"}
+labels_value = {13:"LumP", 12:"LumInf", 4:"Large_BaSq",  5:"Small_BaSq", 3: "Mes-like"}
 
 # create the apropiate subfolders
-base_path_results = path.join(base_path, "Diff_exp/Viking/" + version + "/")
+base_path_results = path.join(base_path, version + "/")
 if not path.exists(base_path_results):
     makedirs(base_path_results)
 
 # Read the data
-outputs = pd.read_csv(base_path + filename, sep="\t")
+outputs = pd.read_csv(base_path + filename, index_col='Sample', sep="\t")
 
 counter_values = Counter(outputs[cluster_label]) #for verifying
 unique_values = outputs[cluster_label].unique()
@@ -66,7 +69,7 @@ unique_values.sort()
 
 for comb in list(combinations(unique_values, 2)):
     cluster_1, cluster_2 = labels_value[comb[0]], labels_value[comb[1]]
-    filename = "{}_vs_{}_v5.info".format(cluster_1, cluster_2)
+    filename = f"{cluster_1}_vs_{cluster_2}_{version}.info"
     print("###Combinations {} for {}. Test the number of samples for each group:".format(comb, filename))
 
     to_save = pd.concat([outputs.loc[outputs[cluster_label] == comb[0]], outputs.loc[outputs[cluster_label] == comb[1]]])
@@ -83,4 +86,4 @@ for comb in list(combinations(unique_values, 2)):
     else:
         print("✅ {}".format(filename))
 
-    df = prepare_for_viking(base_path_results, file_name=filename, tpm_df=to_save.reset_index(), cluster=cluster_label)
+    df = prepare_for_viking(base_path_results, file_name=filename, tpm_df=to_save.reset_index(), cluster=cluster_label, h5_path=h5_path)

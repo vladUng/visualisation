@@ -13,64 +13,6 @@ import numpy as np
 
 from os import walk, path, makedirs
 
-# Pre-processing TPMs
-def filter_data(df, th, at_least_good_cols=3, idx_cols=["genes"]):
-    """ Filter a given DataFrame by getting removing of the rows that have elements <= threshold.
-
-    Args:
-        df ([DataFrame]): The DataFrame from where we have to filter the data. This is has the genes as columns and samples as rows
-        th ([float]): Threshold value of the unexpressed genes
-        at_least_good_cols (int, optional): [The number of samples that fulfill the conditions]. Defaults to 3.
-
-    Returns:
-        [DataFrame]: DataFrame
-    """
-    # eliminating the first column
-    df_prcsd = df.drop(idx_cols, axis=1)
-    # compute the selected genes
-    selected_genes_idxs = df_prcsd[df_prcsd >= th].dropna(thresh=at_least_good_cols).index.values
-    selected_genes = df_prcsd.iloc[selected_genes_idxs]
-    # add the genes names back
-    cols = [df.loc[selected_genes_idxs, idx_col] for idx_col in idx_cols]
-    cols.append(selected_genes)
-    selected_genes = pd.concat(cols, axis=1)
-
-    # reset indexes
-    selected_genes.reset_index(drop=True, inplace=True)
-    return selected_genes
-
-def select_genes(tcga_tpm_df, no_genes = 3347, relative_selection = True):
-    """
-     It selects the most relative varied genes in the given DataFrame for the given number
-
-    Args:
-        tcga_tpm_df ([Dataframe]): The dataframe from where to select
-        no_genes_selected (int, optional): [Genes to select]. Defaults to 3347.
-
-    Returns:
-        [type]: [description]
-    """
-    # dummy_df = pd.concat([pd.DataFrame(tcga_tpm_df["genes"]), pd.DataFrame(np.log2(tcga_tpm_df.iloc[:, 1:] + 1))], axis=1)
-    dummy_df = np.log2(tcga_tpm_df.set_index("genes") + 1).reset_index()
-
-    # remove all the genes w/ that have a lower expression value from `th` in `>10%` across the samples
-    dummy_df = filter_data(dummy_df, th=np.log2(1.5), at_least_good_cols=dummy_df.shape[1]*0.9, idx_cols=["genes"])
-
-    # make all the  values float
-    dummy_df.set_index("genes", inplace=True)
-
-    # acros samples
-    print("####### Gene selection, num genes: {} #######".format(no_genes))
-    if relative_selection:
-        print("The genes selected by the highest standard deviation/median ration.")
-        dummy_df["std"] = dummy_df.std(axis=1) / dummy_df.median(axis=1)
-    else:
-        print("The genes selected by the highest standard deviation; approached used by Robertson et al.")
-        dummy_df["std"] = dummy_df.std(axis=1)
-
-    most_varied_genes = list(dummy_df.sort_values(by="std", ascending=False).iloc[:no_genes].index)
-    return most_varied_genes
-
 def create_map_cols(tcga_tpm_df):
     """
      Remove the -01B and -01A - this needs to be run only once
@@ -87,54 +29,7 @@ def create_map_cols(tcga_tpm_df):
         mapping_cols[col] = "-".join(col.split("-")[:-1])
     return mapping_cols
 
-# Labeling functions
-
-def encode_sleuth(row):
-    if row["group"] == "cluster_0":
-        return "LumP"
-    elif row["group"] == "cluster_1":
-        return "LumInf_NS"
-    elif row["group"] == "cluster_2":
-            return "Large_BaSq"
-    elif row["group"] == "cluster_3":
-        return "Small_BaSq"
-    elif row["group"] == "cluster_4":
-        return "NE-like"
-    else:
-        return "NaN"
-
-def decode_sleuth(row):
-    if row["comp_with"] == "LumP":
-        return "c_0"
-    elif row["comp_with"] == "LumInf_NS":
-        return "c_1"
-    elif row["comp_with"] == "Large_BaSq":
-            return "c_2"
-    elif row["comp_with"] == "Small_BaSq":
-        return "c_3"
-    elif row["comp_with"] == "NE-like":
-        return "cluster_4"
-    else:
-        return "NaN"
-
-def encode_sleuth_numeric(row):
-    return int(row["group"].split("_")[1])
-
-def get_most_sig(row):
-    labels = row["exp"].split("_vs_")
-    labels.remove(row["cluster"])
-    return labels[0]
-
-def apply_order_sig(df):
-    # Goes through the name of the files(exp), splits the names in the two cluster labels (e.g ["Mixed"] '_vs_' ["Small_Ba_Sq_v4"]) and keeps ony the second (the first one we already know). Than we do some pre-processing
-    for gene in df["genes"].unique()[:]:
-        # order_sig = []
-        order_sig = "-".join(df[df["genes"]==gene]["comp_with"].values)
-        df.loc[df["genes"]==gene, "order_sig"] = order_sig
-
-    return df 
-
-def prep_for_volcano(tcga_tpm_df, mapping_cols, base_path, results_path, info_file, output_file, save_file = False):
+def prep_for_volcano(tcga_tpm_df, base_path, results_path, info_file, output_file, save_file = False):
     """
     Function that creates the file necessary for the volcano and scatter plots in the Visualisation tool.
     
@@ -165,11 +60,15 @@ def prep_for_volcano(tcga_tpm_df, mapping_cols, base_path, results_path, info_fi
     # Create the new DataFrame and apply log2(TPM+1)
     dummy_df = pd.concat([pd.DataFrame(tcga_tpm_df["genes"]), pd.DataFrame(np.log2(tcga_tpm_df.iloc[:, 1:] + 1))], axis=1)
 
-    # Select only the genes used in Sleuth
-    df = dummy_df[dummy_df["genes"].isin(sleuth_results["Genes"])]
-    df.rename(columns=mapping_cols, inplace=True)
-    df = df[["genes"] +  list(pd_for_diff["sample"].values)]
-    df = df.set_index("genes").transpose()
+    # Add the missing values 
+    sleuth_results = pd.concat([sleuth_results.set_index('Genes'), dummy_df.set_index('genes')], axis=1).fillna(1)
+    sleuth_results['q-value'] = sleuth_results['q-value'].fillna(1)
+    sleuth_results['p-value'] = sleuth_results['p-value'].fillna(1)
+    # Bellow is dropping the genes that are found only in DEA and not in the expressed genes
+    sleuth_results.dropna(inplace=True)
+
+    # just keep the sample columns
+    df = sleuth_results[dummy_df.columns[1:]].transpose().copy(deep=True)
     df.index.names = ["sample"]
 
     # set the cluster
@@ -197,7 +96,6 @@ def prep_for_volcano(tcga_tpm_df, mapping_cols, base_path, results_path, info_fi
     fold_change["-log10(q)"] = -np.log10(sleuth_results["q-value"])
 
     fold_change.set_index("genes", inplace=True)
-    sleuth_results.set_index("Genes", inplace=True)
     
     # Add the data from sleuth to the output file
     fold_change["q"] = sleuth_results["q-value"]
@@ -208,41 +106,34 @@ def prep_for_volcano(tcga_tpm_df, mapping_cols, base_path, results_path, info_fi
     fold_change.rename(columns={"index":"genes"}, inplace=True)
     
     if save_file:
-        fold_change.to_csv(base_path+"/Diff_exp/viz_tool/" + output_file,  index=False, sep="\t")
+        fold_change.to_csv(base_path + output_file,  index=False, sep="\t")
         
     return fold_change
 
 
 # Inputs
-version = "v5"
+version = "v1"
 
-base_path = "../../results/Stage I/gc42/"
-viking_output = path.join(base_path, "Diff_exp/Viking/output/")
-# viz_tool = path.join(base_path, "Diff_exp/Viking/viz_tool/")
-cluster_label = "RawKMeans_CS_5"
+base_path = "../data/sel_prun/v1/"
+viking_output = path.join(base_path, "viking/")
+cluster_label = "dendrogram_cut"
 
 # Read the data
-tpm_df = pd.read_csv(base_path + "tpms_prcsd_gc42.tsv", sep="\t")
-most_varied_genes = select_genes(tpm_df, no_genes=3500)
-mapping_cols = create_map_cols(tpm_df)
+tpm_df = pd.read_csv("../data/sel_prun/tum_TPMs_selected_genes_gc42_all_v4.tsv", sep="\t").rename(columns={'gene':'genes'})
 
-
-raw_files = next(walk(viking_output+version), (None, None, []))[2]
+raw_files = next(walk(viking_output), (None, None, []))[2]
 experiments = [file.split("_results")[0] for file in raw_files]
 # experiments.remove(".DS_Store")
-
-# experiments = ["Small_BaSq_vs_Lum_Inf_NS_v5"]
 
 dfs = {}
 master_df = pd.DataFrame()
 sel_cols = ["genes", "group", "pi", 'fold_change', '-log10(q)', "exp"]
 for exp in experiments:
-    results_path = "{}/{}/{}_results.tsv".format(viking_output, version, exp)
-    info_file = "Diff_exp/Viking/{}/{}.info".format(version, exp)
-    output_file = "{}_vulcano_labels.tsv".format(exp)
+    results_path = f"{viking_output}/{exp}_results.tsv"
+    info_file = f"{base_path}/info_files/{exp}.info"
+    output_file = f"{viking_output}/{exp}_vulcano_labels.tsv"
     
-    df = prep_for_volcano(tpm_df, mapping_cols, base_path, results_path, info_file, output_file, save_file=True)
+    df = prep_for_volcano(tpm_df, '', results_path, info_file, output_file, save_file=True)
     df["exp"] = exp
-    df = df.loc[df["genes"].isin(most_varied_genes)]
     master_df = pd.concat([master_df, df[sel_cols]], axis=0)
     dfs["_".join(exp.split("_")[:-1])] = df
