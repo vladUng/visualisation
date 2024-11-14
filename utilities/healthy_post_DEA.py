@@ -96,6 +96,9 @@ def prep_for_volcano(tcga_tpm_df, base_path, results_path, info_file, output_fil
     # set the cluster
     df["cluster"] = pd_for_diff.set_index("sample")[cluster_label]
 
+    # This is optional
+    # df['NHU_differentiation'] =  pd_for_diff.set_index("sample")['NHU_differentiation']
+
     # print("Are arrays in sync? {}".format(np.array_equal(df.iloc[:, -1].reset_index(), pd_for_diff[["sample", cluster_label]])) )
 
     # calculate the median and avg TPM values
@@ -109,10 +112,11 @@ def prep_for_volcano(tcga_tpm_df, base_path, results_path, info_file, output_fil
 
     fold_change.set_index("genes", inplace=True)
 
-    # compute the fold change
-    fold_change["fold_change_med"] = fold_change.iloc[:, 0] - fold_change.iloc[:, 2]
-    fold_change["fold_change"] = fold_change.iloc[:, 1] - fold_change.iloc[:, 3]
+    # This is actually Diff in gene expression and not FC. The source of this was my misunderstanding of what fold change is.
+    fold_change['fold_change_med'] = fold_change[f'{new_labels[0]}_med'] - fold_change[f'{new_labels[1]}_med']
+    fold_change['fold_change'] = fold_change[f'{new_labels[0]}'] - fold_change[f'{new_labels[1]}']
 
+    fold_change["fold_change_log"] = np.log2(fold_change[f'{new_labels[0]}']+1) - np.log2(fold_change[f'{new_labels[1]}']+1)
 
     # assign the cluster labels
     fold_change["group"] = new_labels[0]
@@ -123,7 +127,9 @@ def prep_for_volcano(tcga_tpm_df, base_path, results_path, info_file, output_fil
     # Add the data from sleuth to the output file
     fold_change["q"] = sleuth_results["q-value"]
     fold_change["p"] = sleuth_results["p-value"]
-    fold_change["pi"] = fold_change["-log10(q)"] * fold_change["fold_change"]
+    fold_change["pi"] = fold_change["-log10(q)"] * fold_change["fold_change"] #Not really right, the scaling will be off without using the fold change
+    # This is the actual PI
+    fold_change["pi_log2"] = fold_change["-log10(q)"] * fold_change['fold_change_log']
 
     fold_change.reset_index(inplace=True)
     fold_change.rename(columns={"index":"genes"}, inplace=True)
@@ -137,13 +143,13 @@ def prep_for_volcano(tcga_tpm_df, base_path, results_path, info_file, output_fil
 # Inputs
 version = "v1"
 
-base_path = "/Users/vlad/Documents/Code/York/iNet/NB/Network_v2/test_iNet/Viking/"
-viking_output = path.join(base_path, f"{version}")
+base_path = "/Users/vlad/Documents/Code/York/Phd_thesis_exp/notebooks/others/non_tum_split/Viking/"
+viking_output = path.join(base_path, f"{version}") 
 # viz_tool = path.join(base_path, "Diff_exp/Viking/viz_tool/")
 # cluster_label = "RawKMeans_CS_5"
 
 # Read the data
-tpm_df = pd.read_csv(f"{base_path}/{version}/healthy_data_all_gc42_v4.tsv", sep="\t").rename(columns={'gene':'genes'})
+tpm_df = pd.read_csv(f"/Users/vlad/Documents/Code/York/Phd_thesis_exp/data/healthy_data_10k_gc42_v3.tsv", sep="\t").rename(columns={'gene':'genes'})
 
 
 raw_files = next(walk(f"{viking_output}/results/"), (None, None, []))[2]
@@ -162,9 +168,9 @@ for exp in experiments:
     print(f"\n###### {exp} ######")
     results_path = f"{viking_output}/results/{exp}_results.tsv"
     info_file = f"{viking_output}/info/{exp}.info"
-    output_file = f"{viking_output}/results/labels/{exp}_v4_vulcano_labels.tsv"
+    output_file = f"{viking_output}/results/labels/{exp}_v3_vulcano_labels.tsv"
     
-    df = prep_for_volcano(tpm_df, {}, "", results_path, info_file, output_file, save_file=True, cluster_label='tissue_type')
+    df = prep_for_volcano(tpm_df, "", results_path, info_file, output_file, save_file=True, cluster_label='express')
     df["exp"] = exp
     # df = df.loc[df["genes"].isin(most_varied_genes)]
     master_df = pd.concat([master_df, df[sel_cols]], axis=0)

@@ -140,3 +140,9 @@ token.pickle
 *.DS_Store
 
 *.vscode/
+
+
+# folders
+data/sel_prun/
+cluster_analysis/
+networks/

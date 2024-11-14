@@ -38,22 +38,29 @@ def prepare_for_viking(base_path, file_name, tpm_df, cluster="RawKMeans_CS_5", c
     df.loc[df["sample"] == "TCGA-K4-A3WU", "path"] = f"{h5_path}/TCGA-K4-A3WU-01B/abundance.h5"
     df.loc[df["sample"] == "TCGA-K4-A4AB", "path"] = f"{h5_path}/TCGA-K4-A4AB-01B/abundance.h5"
 
-    df.to_csv(base_path + file_name, index=False, sep="\t")
+    df['express'] = df['express'].astype(int)
+    # df.drop(columns=cluster_label, inplace=True)
+    df[['sample', 'express', 'path', cluster_label]].to_csv(base_path + file_name, index=False, sep="\t")
     return df
 
 # Define the inputs
 ### base_path - input; 
 # base_path_results - output
 # base_path = "../../results/Stage I/gc42/"
-base_path = '../data/sel_prun/'
-filename = "morph_cs_v1.tsv"
-cluster_model = "dendrogram_cut" #it needs to be numeric
-cluster_label = 'dendrogram_label'
+base_path = '../data/cluster_analysis/gc_47/'
+# filename = "VU_clustering_v4.tsv"
+filename = 'VU_clustering_v6.tsv'
+cluster_model = "RawKMeans_labels" #it needs to be numeric
+cluster_label = 'KM_gc47'
 version = "v1"
-h5_path = '/mnt/scratch/projects/biol-cancerinf-2020/Raw-Data/TCGA/BLCA/01_RNAseq/kallisto-gencode-v42/'
+# h5_path = '/mnt/scratch/projects/biol-cancerinf-2020/Raw-Data/TCGA/BLCA/01_RNAseq/kallisto-gencode-v42/'
+h5_path = '/mnt/scratch/projects/biol-cancerinf-2020/Raw-Data/TCGA/BLCA/01_RNAseq/kallisto-gencode-v46/01_kallisto_output/'
 
 # Mapping; Sleuth only accepts integers 
-labels_value = {13:"LumP", 12:"LumInf", 4:"Large_BaSq",  5:"Small_BaSq", 3: "Mes-like"}
+# labels_values = {13:"LumP", 12:"LumInf", 4:"Large_BaSq",  5:"Small_BaSq", 3: "Mes-like"} //for Net_I
+# labels_values = {22: "Med_IFNG", 20: "Low_IFNG", 3: "High_IFNG", 0: "Lump", 4: "NE", 1: "Lum_InfNs"} # CLuster analysis
+# labels_values = {1: "Basal_1", 5: "Basal_5", 0: "BasalLuminal_0", 4: "LumInf_4", 3: "Lum_3", 6: "Lum_6", 2: "Lum_2"} # Net II
+labels_values = {22: "Med_IFNG", 20: "Low_IFNG", 3: "High_IFNG", 1: "LumP", 4: "Mixed", 0: "Lum_InfNs"} # CLuster analysis
 
 # create the apropiate subfolders
 base_path_results = path.join(base_path + version + "/info_files/")
@@ -63,13 +70,16 @@ if not path.exists(base_path_results):
 # Read the data
 outputs = pd.read_csv(base_path + filename, index_col='Sample', sep="\t")
 
+outputs[cluster_model] = outputs[cluster_model].astype(int)
+outputs[cluster_label] = outputs[cluster_model].replace(labels_values)
+
 counter_values = Counter(outputs[cluster_model]) #for verifying
 unique_values = outputs[cluster_model].unique()
 
 unique_values.sort()
 
 for comb in list(combinations(unique_values, 2)):
-    cluster_1, cluster_2 = labels_value[comb[0]], labels_value[comb[1]]
+    cluster_1, cluster_2 = labels_values[comb[0]], labels_values[comb[1]]
     filename = f"{cluster_1}_vs_{cluster_2}_{version}.info"
     print("###Combinations {} for {}. Test the number of samples for each group:".format(comb, filename))
 
@@ -87,4 +97,4 @@ for comb in list(combinations(unique_values, 2)):
     else:
         print("✅ {}".format(filename))
 
-    df = prepare_for_viking(base_path_results, file_name=filename, tpm_df=to_save.reset_index(), cluster=cluster_model, cluster_label = cluster_label,h5_path=h5_path)
+    df = prepare_for_viking(base_path_results, file_name=filename, tpm_df=to_save.reset_index(), cluster=cluster_model, cluster_label = cluster_label ,h5_path=h5_path)

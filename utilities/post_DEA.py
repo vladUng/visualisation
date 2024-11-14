@@ -13,7 +13,23 @@ import numpy as np
 
 from os import walk, path
 
-def prep_for_volcano(tcga_tpm_df, results_path, info_file, output_file, save_file = False, cluster_label='express'):
+
+def create_map_cols(sleuth_results: pd.DataFrame):
+    """
+     Remove the -01B and -01A - this needs to be run only once
+
+    Args:
+        tcga_tpm_df ([DataFrame]): where to remove
+
+    Returns:
+        [Dict]: Dictionary of the old vs new col name
+    """
+    mapping_cols = {}
+    for col in sleuth_results['sample']:
+        mapping_cols[col] = "-".join(col.split("-")[:-1])
+    return mapping_cols
+
+def prep_for_volcano(tcga_tpm_df, results_path, info_file, output_file, save_file = False, cluster_label='express', keep_sleuth=False, remap_cols=False):
     """
     Function that creates the file necessary for the volcano and scatter plots in the Visualisation tool.
     
@@ -44,8 +60,14 @@ def prep_for_volcano(tcga_tpm_df, results_path, info_file, output_file, save_fil
     # Create the new DataFrame and apply log2(TPM+1)
     dummy_df = pd.concat([pd.DataFrame(tcga_tpm_df["genes"]), pd.DataFrame(np.log2(tcga_tpm_df.iloc[:, 1:] + 1))], axis=1)
 
+
     # Add the missing values 
-    sleuth_results = pd.concat([sleuth_results.set_index('Genes'), dummy_df.set_index('genes')], axis=1).fillna(1)
+    sleuth_results = pd.concat([sleuth_results.set_index('Genes'), dummy_df.set_index('genes')], axis=1)
+    if keep_sleuth:
+        sleuth_results.fillna(1)
+    else:
+        sleuth_results.dropna()
+
     sleuth_results['q-value'] = sleuth_results['q-value'].fillna(1)
     sleuth_results['p-value'] = sleuth_results['p-value'].fillna(1)
     # Bellow is dropping the genes that are found only in DEA and not in the expressed genes
@@ -70,21 +92,26 @@ def prep_for_volcano(tcga_tpm_df, results_path, info_file, output_file, save_fil
         fold_change[new_labels[-1]] = df[df["cluster"] == label].iloc[:, :-1].mean().values
 
     # compute the fold change
-    fold_change["fold_change_med"] = fold_change.iloc[:, 1] - fold_change.iloc[:, 3]
-    fold_change["fold_change"] = fold_change.iloc[:, 2] - fold_change.iloc[:, 4]
+    fold_change.set_index("genes", inplace=True)
 
+    # This is actually Diff in gene expression and not FC. The source of this was my misunderstanding of what fold change is.
+    fold_change['fold_change_med'] = fold_change[f'{new_labels[0]}_med'] - fold_change[f'{new_labels[1]}_med']
+    fold_change['fold_change'] = fold_change[f'{new_labels[0]}'] - fold_change[f'{new_labels[1]}']
+
+    fold_change["fold_change_log"] = np.log2(fold_change[f'{new_labels[0]}']+1) - np.log2(fold_change[f'{new_labels[1]}']+1)
 
     # assign the cluster labels
     fold_change["group"] = new_labels[0]
     fold_change.loc[fold_change["fold_change"] < 0, "group"] = new_labels[1]
     fold_change["-log10(q)"] = -np.log10(sleuth_results["q-value"])
 
-    fold_change.set_index("genes", inplace=True)
     
     # Add the data from sleuth to the output file
     fold_change["q"] = sleuth_results["q-value"]
     fold_change["p"] = sleuth_results["p-value"]
     fold_change["pi"] = fold_change["-log10(q)"] * fold_change["fold_change"]
+    fold_change["pi_log2"] = fold_change["-log10(q)"] * fold_change['fold_change_log']
+
 
     fold_change.reset_index(inplace=True)
     fold_change.rename(columns={"index":"genes"}, inplace=True)
@@ -95,32 +122,32 @@ def prep_for_volcano(tcga_tpm_df, results_path, info_file, output_file, save_fil
     return fold_change
 
 
-# Inputs
 version = "v1"
 
 base_path = "../data/sel_prun/v1/"
+# base_path = f'../data/cluster_analysis/gc_47/{version}'
 viking_output = path.join(base_path, "viking/")
-cluster_label = "dendrogram_cut"
+cluster_label = "dendrogram_label" # column in the info_file
 
 # Read the data
+# tpm_df = pd.read_csv("../data/cluster_analysis/gc_47/gencode_47_merged_TPMs.tsv", sep="\t").rename(columns={'gene':'genes'})
 tpm_df = pd.read_csv("../data/sel_prun/tum_TPMs_selected_genes_gc42_all_v4.tsv", sep="\t").rename(columns={'gene':'genes'})
 
 raw_files = next(walk(viking_output), (None, None, []))[2]
 experiments = [file.split("_results")[0] for file in raw_files]
-
-labels_value = {13:"LumP", 12:"LumInf", 4:"Large_BaSq",  5:"Small_BaSq", 3: "Mes-like"}
+experiments
 
 dfs = {}
 master_df = pd.DataFrame()
-sel_cols = ["genes", "group", "pi", 'fold_change', '-log10(q)', "exp"]
+sel_cols = ["genes", "group", "pi", 'pi_log2', 'fold_change', 'fold_change_log', '-log10(q)', "exp"]
 for exp in experiments:
     if exp == '.DS_Store':
         continue
     results_path = f"{viking_output}/{exp}_results.tsv"
     info_file = f"{base_path}/info_files/{exp}.info"
-    output_file = f"{viking_output}/{exp}_vulcano_labels.tsv"
+    output_file = f"{viking_output}/logFC/logFC_{exp}_gc42_vulcano.tsv"
     
-    df = prep_for_volcano(tpm_df, results_path, info_file, output_file, save_file=True, cluster_label='dendrogram_label')
+    df = prep_for_volcano(tpm_df, results_path, info_file, output_file, save_file=True, cluster_label=cluster_label, keep_sleuth=True, remap_cols=True)
     df["exp"] = exp
     master_df = pd.concat([master_df, df[sel_cols]], axis=0)
     dfs["_".join(exp.split("_")[:-1])] = df
