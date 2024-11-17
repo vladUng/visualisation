@@ -26,13 +26,17 @@ def create_custom_traces(selected_genes = None):
     mixed_lumInf_diff =["ADGRF4","ADIRF","ALS2CL","ANXA8","ANXA8L1","B3GNT3","BATF","BCAS1","C10orf99","C19orf33","CH17-360D5.2","CLDN1","CTSH","CXCL17","EPS8L1","EVPL","FAM110C","FXYD3","GBP2","GNA15","GPR87","IL1RN","ITGB4","ITGB6","KCNN4","KRT19","KRT7","MPZL2","MYOF","P2RY2","PLEKHN1","PRSS22","PSCA","PTGES","PTK6","S100A11","S100A6","S100P","SDC1","SNCG","SYT8","SYTL1","TACSTD2","TINAGL1","TMEM40","UPK1A","UPK2","UPK3A","UPK3B","VGLL1","WNT7B", "ACSF2","ARHGAP27","BICDL2","CAPS","CARD11","CBLC","CLDN4","CSTB","CYP4B1","DENND2D","DTX4","EHF","ELF3","EPHA1","EPN3","FBP1","FOXQ1","GATA3","GDF15","GGT6","GPR160","GRHL1","GRHL3","IQANK1","KRT7-AS","LLNLR-231D4.1","LPAR5","METRNL","NECTIN4","OVOL1","PLA2G2F","PLA2G4F","PPL","PROM2","PSD4","RAB25","RBBP8NL","RBM47","RP4-568C11.4","S100A14","SCNN1B","SEMA4A","SPINK1","SSH3","TFAP2C","TJP3","TMC6","TMPRSS2","TRPM4","UGT1A6","VAMP8","VSIG2"]
     jens_work = ["GJB1"]
 
-    # custom_traces.append({"genes": jens_work, "title": "Jen's work"})
-    # custom_traces.append({"genes":ne_dif, "title": "Diff for NE"})
-    # custom_traces.append({"genes":mixed_lumInf_diff, "title": "Diff for Mixed/LumInf"})
+    # y_chr = ["DDX3Y", "EIF1AY", "KDM5D", "RPS4Y1", "TMSB4Y", "USP9Y", "UTY", "ZFY"]
+    y_chr = ['AMELY', 'BPY2', 'CDY2B', 'DAZ1', 'DDX3Y', 'EIF1AY', 'HSFY1', 'KDM5D', 'NLGN4Y', 'PCDH11Y', 'PRORY', 'PRY', 'RBMY1B', 'RPS4Y1', 'SRY', 'TBL1Y', 'TGIF2LY', 'TMSB4Y', 'TSPY2', 'USP9Y', 'UTY', 'VCY', 'ZFY']
 
-    # SB
+
+    # custom_traces.append({"genes": jens_work, "title": "Jen's work"})
+    custom_traces.append({"genes":ne_dif, "title": "Diff for NE"})
+    custom_traces.append({"genes":mixed_lumInf_diff, "title": "Diff for Mixed/LumInf"})
+
+    # SB 
     custom_traces.append({"genes":ifnq_genes, "title": "SB_IFNQ"})
-    # custom_traces.append({"genes":diff_neuronal, "title": "Diff old vs remap"})
+    custom_traces.append({"genes":diff_neuronal, "title": "Diff old vs remap"})
 
     # ryan_genes = ["FGFR3", "EGFR", "TP53"]
     custom_traces = gm.add_lund_markers(custom_traces=custom_traces)
@@ -44,15 +48,23 @@ def create_custom_traces(selected_genes = None):
     custom_traces = gm.add_tcga_markers(custom_traces=custom_traces)
     custom_traces = gm.add_uroth_bladder_cancer(custom_traces=custom_traces)
 
-    custom_traces = gm_2.add_com_markers_raw(custom_traces=custom_traces, data_type='median')
-    custom_traces = gm_2.add_com_markers_raw(custom_traces=custom_traces)
     # custom_traces = gm.gc42_uniq_genes(custom_traces=custom_traces)
     # custom_traces = gm.gc42_high_genes(custom_traces=custom_traces)
     # custom_traces = gm.gc42_low_genes(custom_traces=custom_traces)
 
     # Sel tfs
+    custom_traces = []
     custom_traces = gm.add_sel_tf(custom_traces=custom_traces)
+    custom_traces.append({"genes":ifnq_genes, "title": "SB_IFNG"})
 
+    low_infg = ['DANCR', 'KDM1A', 'MLF1A', 'PCAT6', 'MACROD1', 'FZD7',]
+    custom_traces.append({"genes": low_infg, "title": "Low IFNG"})
+
+    custom_traces = gm.add_all_markers(custom_traces)
+
+
+    # custom_traces = gm_2.add_com_markers_raw(custom_traces=custom_traces, data_type='median')
+    custom_traces = gm_2.add_com_markers_raw(custom_traces=custom_traces)
 
     return custom_traces
 

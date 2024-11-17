@@ -10,6 +10,10 @@ from plotlyflask.gene_diff import gene_diff as gd
 from plotlyflask.gene_viz import gene_viz as gv
 from plotlyflask.plotlydash.main import app
 
+import plotly.io as pio
+pio.templates.default = "ggplot2"
+
+
 index_page = html.Div([
     html.H1("Welcome to JBU's Data visualisation!"),
     html.H2("Below are the options available."),
@@ -44,5 +48,5 @@ def open_browser():
     
 if __name__ == "__main__":
     # Timer(1, open_browser).start()
-    app.server.run(host='0.0.0.0', port=8080, debug=True)
+    app.server.run(host='0.0.0.0', port=8080, debug=False)
 

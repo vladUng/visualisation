@@ -9,6 +9,8 @@
 @Desc    :   File to put genes that are show in the DEA/Pi/Scatter plot
 '''
 
+import pandas as pd
+
 def add_uroth_bladder_cancer(custom_traces):
     """
 
@@ -22,6 +24,7 @@ def add_uroth_bladder_cancer(custom_traces):
     krt = ["KRT13", "KRT14", "KRT15", "KRT20"]
     upk = ["UPK1B", "UPK1A", "UPK3A", "UPK2"]
     cld = ["CLDN3", "CLDN4", "CLDN5" ]
+    
     egfr_fam = ["EGFR", "ERBB2", "ERBB3", "ERBB4", "EGF", "AREG", "HBEGF","TGFA","BTC", "EREG"]
     fgfr_fam = ["FGFR1", "FGFR2", "FGFR3", "FGF1", "FGF2"]
     map_kpathway = ["RAS", "RAF", "MEK1", "MEK2", "MEK3", "MEK4","ERK"]
@@ -101,12 +104,19 @@ def add_tcga_markers(custom_traces):
     immune_markers = ["CD274", "PDCD1LG2", "IDO1", "CXCL11", "L1CAM", "SAA1"]
     neural_diff = ["MSI1", "PLEKHG4B", "GNG4", "PEG10", "RND2", "APLP1", "SOX2", "TUBB2B"]
 
+    # TCGA markers - main paper
+    emt_claudin = ["ZEB1", "ZEB2", "SNAI1", "TWIST1", "CDH2", "CLDN3", "CLDN4", "CLDN7"]
+    ecm_muscle = ["PGM5", "DES", "C7", "SFRP4", "COMP", "SGCD"]
+
     # TCGA
     custom_traces.append({"genes":luminal_markers, "title": "TCGA_luminal"})
     custom_traces.append({"genes":basal_markers, "title": "TCGA_basal"})
     custom_traces.append({"genes":immune_markers, "title": "TCGA_immune"})
     custom_traces.append({"genes":squamos_markers, "title": "TCGA_squamos"})
     custom_traces.append({"genes":neural_diff, "title": "TCGA_neuroendocrine"})
+    custom_traces.append({"genes":emt_claudin, "title": "TCGA_emt"})
+    custom_traces.append({"genes":ecm_muscle, "title": "TCGA_ecm"})
+
 
     return custom_traces
 
@@ -295,3 +305,19 @@ def low_significant_genes(custom_traces):
 
     return custom_traces
 
+def add_sel_tf(custom_traces):
+    sel_tfs = pd.read_csv(f'JBU_data/tf_ctrl.csv', index_col='gene')
+
+    custom_traces.append({"genes": list(sel_tfs.index), "title": "Selected TF"})
+
+    return custom_traces
+
+
+def add_all_markers(custom_traces):
+    all_markers = pd.read_csv(f'JBU_data/known_markers.tsv', sep='\t')
+
+    for col in all_markers.columns:
+        genes = all_markers[col].dropna()
+        custom_traces.append({'genes': list(genes), 'title': col})
+
+    return custom_traces

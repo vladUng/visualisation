@@ -12,21 +12,24 @@ import pandas as pd
 
 def add_com_markers_raw(custom_traces, data_type='ModCon_Rank'):
     label = 'ModCon'
+    # base_path = '/Users/vlad/Documents/Code/York/Phd_thesis_exp/notebooks/network_II/reward/'
+    base_path = '/Users/vlad/Documents/Code/York/Phd_thesis_exp/notebooks/network_II/standard/'
+
     if data_type == 'ModCon_Rank': 
-        path = '/Users/vlad/Documents/Code/York/iNet/NB/Network_v2/healthy_hSBM_v4/Top_50_ModCon_Rank_v4.tsv'
+        path = f'{base_path}/Top_50_ModCon_Rank.tsv'
     else: 
-        path = '/Users/vlad/Documents/Code/York/iNet/NB/Network_v2/healthy_hSBM_v4/Top_50_median_v4.tsv'
+        path =  f'{base_path}/Top_50_median.tsv'
         label = 'median'
 
     markers_df = pd.read_csv(path, sep='\t', dtype_backend='pyarrow')
     markers_df.columns= markers_df.columns.astype(int)
     markers_df = markers_df[markers_df.columns.sort_values()]
-    sel_coms = [24, 26, 28, 30, 25, 22, 1, 29, 19]
+    sel_coms = [24, 26, 28, 30, 25, 22, 1, 29, 19] #Rwd
+    sel_coms = [19, 22, 25, 29, 1]
     # sel_coms = all_coms
-    for col in markers_df.columns:
+    for col in sel_coms:
         # if col not in sel_coms:
         #     continue
         custom_traces.append({'genes': list(markers_df[col].values), 'title': f'{col}_{label}'})
   
     return custom_traces
-

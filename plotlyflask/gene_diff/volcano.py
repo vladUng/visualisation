@@ -18,8 +18,6 @@ A volcano plot has the following axis:
 
 
 import dash_bio as dashbio
-import numpy as np
-import plotly.express as px
 
 from plotlyflask.gene_diff import shared
 
@@ -60,12 +58,9 @@ def draw_volcano(df, fold_changes, selected_data, selected_genes):
         highlight=True, 
         annotation="group"
     )
-    
-    x_col = "fold_change"
-    y_col = "-log10(q)"
 
     # show the selected points
-    if selected_data:
+    if selected_data and len(selected_data['points']):
         ranges = selected_data['range']
         selection_bounds = {'x0': ranges['x'][0], 'x1': ranges['x'][1],
                             'y0': ranges['y'][0], 'y1': ranges['y'][1]}
@@ -76,9 +71,13 @@ def draw_volcano(df, fold_changes, selected_data, selected_genes):
         # fig.update_traces(selectedpoints=selected_idxs, mode='markers+text', unselected={'marker': { 'opacity': 0.3 },  "textfont": {"color": "rgba(0, 0, 0, 0)"} })
         fig.update_traces(selectedpoints=selected_idxs, mode='markers', unselected={'marker': { 'opacity': 0.3 } })
 
+        fig.add_shape(dict({'type': 'rect', 'line': { 'width': 1, 'dash': 'dot', 'color': 'darkgrey' } }, **selection_bounds))
+
     else:
-        selection_bounds = {'x0': np.min(df[x_col] - 2), 'x1': np.max(df[x_col] + 2),
-                            'y0': np.min(df[y_col] - 2), 'y1': np.max(df[y_col]) + 2}
+        # x_col = "fold_change"
+        # y_col = "-log10(q)"
+        # selection_bounds = {'x0': np.min(df[x_col] - 2), 'x1': np.max(df[x_col]),
+        #                     'y0': np.min(df[y_col] - 2), 'y1': np.max(df[y_col])}
         fig.update_traces(marker=dict(size=10, opacity=0.4), selector=dict(mode='markers'))
 
 
@@ -86,8 +85,6 @@ def draw_volcano(df, fold_changes, selected_data, selected_genes):
 
     fig.update_traces(customdata=df["genes"], textposition="top right")
     fig.update_layout(dragmode='select')
-
-    fig.add_shape(dict({'type': 'rect', 'line': { 'width': 1, 'dash': 'dot', 'color': 'darkgrey' } }, **selection_bounds))
 
     return fig
 
