@@ -102,7 +102,7 @@ def prep_for_volcano(tcga_tpm_df, results_path, info_file, output_file, save_fil
 
     # assign the cluster labels
     fold_change["group"] = new_labels[0]
-    fold_change.loc[fold_change["fold_change"] < 0, "group"] = new_labels[1]
+    fold_change.loc[fold_change["fold_change_log"] < 0, "group"] = new_labels[1]
     fold_change["-log10(q)"] = -np.log10(sleuth_results["q-value"])
 
     
@@ -124,14 +124,15 @@ def prep_for_volcano(tcga_tpm_df, results_path, info_file, output_file, save_fil
 
 version = "v1"
 
-base_path = "../data/sel_prun/v1/"
-# base_path = f'../data/cluster_analysis/gc_47/{version}'
+# base_path = "../data/sel_prun/v1/"
+base_path = f'../data/cluster_analysis/gc_46/{version}'
 viking_output = path.join(base_path, "viking/")
-cluster_label = "dendrogram_label" # column in the info_file
+# cluster_label = "dendrogram_label" # column in the info_file
+cluster_label = 'KM_gc46'
 
 # Read the data
-# tpm_df = pd.read_csv("../data/cluster_analysis/gc_47/gencode_47_merged_TPMs.tsv", sep="\t").rename(columns={'gene':'genes'})
-tpm_df = pd.read_csv("../data/sel_prun/tum_TPMs_selected_genes_gc42_all_v4.tsv", sep="\t").rename(columns={'gene':'genes'})
+tpm_df = pd.read_csv("../data/cluster_analysis/gc_46/gencode_46_merged_TPMs.tsv", sep="\t").rename(columns={'gene':'genes'})
+# tpm_df = pd.read_csv("../data/sel_prun/tum_TPMs_selected_genes_gc42_all_v4.tsv", sep="\t").rename(columns={'gene':'genes'})
 
 raw_files = next(walk(viking_output), (None, None, []))[2]
 experiments = [file.split("_results")[0] for file in raw_files]
@@ -145,7 +146,7 @@ for exp in experiments:
         continue
     results_path = f"{viking_output}/{exp}_results.tsv"
     info_file = f"{base_path}/info_files/{exp}.info"
-    output_file = f"{viking_output}/logFC/logFC_{exp}_gc42_vulcano.tsv"
+    output_file = f"{viking_output}/logFC/logFC_{exp}_gc46_vulcano.tsv"
     
     df = prep_for_volcano(tpm_df, results_path, info_file, output_file, save_file=True, cluster_label=cluster_label, keep_sleuth=True, remap_cols=True)
     df["exp"] = exp

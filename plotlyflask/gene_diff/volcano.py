@@ -40,9 +40,10 @@ def draw_volcano(df, fold_changes, selected_data, selected_genes):
     Returns:
         fig: figure object from plotly
     """
+    metric = 'fold_change_log'
     fig = dashbio.VolcanoPlot(
         dataframe=df,
-        effect_size="fold_change",
+        effect_size=metric,
         gene="genes",
         snp=None,
         p="q",

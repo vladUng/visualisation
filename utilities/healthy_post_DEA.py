@@ -120,7 +120,7 @@ def prep_for_volcano(tcga_tpm_df, base_path, results_path, info_file, output_fil
 
     # assign the cluster labels
     fold_change["group"] = new_labels[0]
-    fold_change.loc[fold_change["fold_change"] < 0, "group"] = new_labels[1]
+    fold_change.loc[fold_change["fold_change_log"] < 0, "group"] = new_labels[1]
     fold_change["-log10(q)"] = -np.log10(sleuth_results["q-value"])
 
     

@@ -13,7 +13,7 @@ import pandas as pd
 def add_com_markers_raw(custom_traces, data_type='ModCon_Rank'):
     label = 'ModCon'
     # base_path = '/Users/vlad/Documents/Code/York/Phd_thesis_exp/notebooks/network_II/reward/'
-    base_path = '/Users/vlad/Documents/Code/York/Phd_thesis_exp/notebooks/network_II/standard/'
+    base_path = '/Users/vlad/Developer/York/Phd_thesis_exp/notebooks/network_II/standard/'
 
     if data_type == 'ModCon_Rank': 
         path = f'{base_path}/Top_50_ModCon_Rank.tsv'

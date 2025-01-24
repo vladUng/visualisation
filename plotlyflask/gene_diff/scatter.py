@@ -110,7 +110,7 @@ def plt_fc_lines(fig, df, fc_values):
 
     # get the maximum values across fold_change and the cluster groups
     med_cols = [col for col in df.columns if "med" in col and "fold" not in col]
-    groups = ["fold_change"] + list(med_cols)
+    groups = ["fold_change_log"] + list(med_cols)
     max_value = round(df[groups].max().max())
 
     colours = ["Black", "Green", "goldenrod", "Red", "orange", "Green", "Purple"]
@@ -147,9 +147,10 @@ def plt_fc_lines(fig, df, fc_values):
 
 # Classify the genes with significant changes
 def significant_genes (row, labels):
-   if row['fold_change_med'] < 1.0 and row['fold_change_med'] > -1.0:
+   metric = 'fold_change_log' #prev was fold_change_med
+   if row[metric] < 1.0 and row[metric] > -1.0:
       return 'Non-significant'
-   elif row["fold_change_med"] > 1.0:
+   elif row[metric] > 1.0:
        return "Significant {}".format(labels[0])
    else: 
         return "Significant {}".format(labels[1])

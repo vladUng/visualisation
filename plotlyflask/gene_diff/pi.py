@@ -51,8 +51,9 @@ def draw_pi_plot(df_1, df_2, filename_1, filename_2, selected_data, selected_gen
         title = "X: {} on  vs Y: {}".format(filename_1, filename_2)
         
     # compute the values
-    first_df["x"] = -np.log10(first_df["q"]) * first_df["fold_change_log"]
-    second_df["y"] = -np.log10(second_df["q"]) * second_df["fold_change_log"]
+    metric = 'fold_change_log'
+    first_df["x"] = -np.log10(first_df["q"]) * first_df[metric]
+    second_df["y"] = -np.log10(second_df["q"]) * second_df[metric]
 
     # Note the genes number may differ and we're setting the index of the DataFrame which has the most genes (i.e. rows)
     #  However, there might be some genes in the second df which are not in the first one. Regardless, we set the nan values to 0 (points will be added to the center)

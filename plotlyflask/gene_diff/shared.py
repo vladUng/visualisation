@@ -71,19 +71,20 @@ def create_custom_traces(selected_genes = None):
 def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", marker_size=12, df_2=None): 
     
     x, y, gene_txt = [], [],[]
+    metric = 'fold_change_log'
     if df_2 is None:
         # For volcano - genes is a separate column
         selected_df = df[df["genes"].isin(genes)]
         y = -np.log10(selected_df["q"])
-        x = selected_df['fold_change']
+        x = selected_df[metric]
         gene_txt = selected_df['genes']
     else:
         # for pi plot - genes are in the index
         selected_df = df[df.index.isin(genes)]
         selected_df_2 = df_2[df_2.index.isin(genes)]
         
-        selected_df['pi_x'] = -np.log10(selected_df["q"]) * selected_df["fold_change"]
-        selected_df_2['pi_y'] = -np.log10(selected_df_2["q"]) * selected_df_2["fold_change"]
+        selected_df['pi_x'] = -np.log10(selected_df["q"]) * selected_df[metric]
+        selected_df_2['pi_y'] = -np.log10(selected_df_2["q"]) * selected_df_2[metric]
         dmy_df = pd.concat([selected_df_2, selected_df], axis=1)
         x = dmy_df['pi_x']
         y = dmy_df['pi_y']
@@ -91,6 +92,7 @@ def create_gene_trace(df, genes, name="custom genes", marker_color="yellow", mar
         gene_txt  = dmy_df.index
         # if dmy_df.shape[0] != len(genes):
         #     print("\n\n### Genes not found for PI ", list(set(genes) - set(gene_txt)))
+        
 
 
     markers = {"size": marker_size, "color": selected_df.shape[0] * [marker_color],  "symbol": "x" }
